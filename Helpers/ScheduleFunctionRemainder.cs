@@ -45,6 +45,8 @@ namespace WebApi.Helpers
         // This method is called by the timer delegate.
         public static void CheckStatus(/*Object stateInfo*/)
         {
+            var autEmail = _configuration.GetSection("AppSettings").GetValue<Boolean>("autoEmail");
+
             DateTime prevDate = DateTime.Now;
 
             Console.WriteLine("Checking status {0}.", DateTime.Now.ToString("h:mm:ss.fff"));
@@ -65,7 +67,11 @@ namespace WebApi.Helpers
                     {
                         localContext = new DataContext(_configuration/*new DbContextOptionsBuilder<DataContext>()*/);
                         prevDate = DateTime.Now;
-                        SendRemindingEmail4Functions(localContext);
+
+                        if (autEmail)
+                        {
+                            SendRemindingEmail4Functions(localContext);
+                        }
                     }
                     finally
                     {
