@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using WebApi.Helpers;
 using log4net;
 using Microsoft.EntityFrameworkCore;
+using WebApi.Entities;
+using System.Security.Principal;
 
 namespace WebApi.Middleware
 {
@@ -27,12 +29,28 @@ namespace WebApi.Middleware
 
         public async Task Invoke(HttpContext context, DataContext dataContext)
         {
+            log.InfoFormat("\n\n----------------------- Starting processing request ------------------------------");
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
             if (token != null)
                 await attachAccountToContext(context, dataContext, token);
 
             await _next(context);
+
+            if (context.Items["Account"] != null && context.Items["Account"].GetType() == typeof(Account))
+            {
+                Account account = (Account)context.Items["Account"];
+                log.InfoFormat("\n----------------------- Ending processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3}\n\n",
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                    account.Email
+                    );
+            }
+            else
+            {
+                log.InfoFormat("\n----------------------- Ending processing request for unknown  AccountId\n\n");
+            }
         }
 
         private async Task attachAccountToContext(HttpContext context, DataContext dataContext, string token)
@@ -78,6 +96,14 @@ namespace WebApi.Middleware
                 var accountId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
 
                 // Attach account to context on successful jwt validation
+                var account = await dataContext.Accounts.Include(x => x.RefreshTokens).SingleOrDefaultAsync(x => x.AccountId == accountId);
+                log.InfoFormat("\n----------------------- Starting processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3}",
+                    account.AccountId,
+                    account.FirstName,
+                    account.LastName,
+                    account.Email
+                    );
+
                 context.Items["Account"] = dataContext.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.AccountId == accountId);
                 //context.Items["Account"] = await dataContext.Accounts.Include(x => x.RefreshTokens).FindAsync(accountId);
                 //var account = await dataContext.Accounts.FindAsync(accountId);

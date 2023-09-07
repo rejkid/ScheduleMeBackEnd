@@ -170,7 +170,7 @@ public class UserFriendlyException: Exception
                     account.Email
                     );
 
-                return Unauthorized(new { message = "Unauthorized" });
+                return Unauthorized(new { message = "Unauthorized. Needs an Administrator's attention" });
             }
 
             return Ok(account);
@@ -301,7 +301,8 @@ public class UserFriendlyException: Exception
             
             return Ok(account);
         }
-        
+
+        [Authorize]
         [HttpGet("available_schedules/{id}")]
         public ActionResult<SchedulePoolElementsResponse> GetAvailableSchedules(int id)
         {
@@ -309,6 +310,7 @@ public class UserFriendlyException: Exception
             return Ok(dates);
         }
 
+        [Authorize]
         [HttpPost("remove-pool-element/{id}/{email}/{userFunction}")]
         public ActionResult<SchedulePoolElementsResponse> RemovePoolElement(int id, string email, string userFunction)
         {
@@ -316,6 +318,7 @@ public class UserFriendlyException: Exception
             return Ok(dates);
         }
 
+        [Authorize]
         [HttpGet("all-available_schedules")]
         public ActionResult<SchedulePoolElementsResponse> GetAllAvailableSchedules(int id)
         {

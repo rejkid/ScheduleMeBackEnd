@@ -184,7 +184,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error("RefreshToken:" + ex.Message);
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
@@ -590,8 +590,9 @@ namespace WebApi.Services
             }
             catch (Exception ex)
             {
+                log.Info("GetById exception:", ex);
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                throw ex;
+                throw;
             }
             finally
             {
@@ -689,7 +690,7 @@ namespace WebApi.Services
         }
         public AccountResponse DeleteSchedule(int id, UpdateScheduleRequest scheduleReq)
         {
-            log.InfoFormat(Thread.CurrentThread.Name + "Entering critical section");
+            log.InfoFormat("DeleteSchedule before locking");
             Monitor.Enter(lockObject);
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
@@ -731,13 +732,13 @@ namespace WebApi.Services
                 catch (Exception ex)
                 {
                     transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
+                    Console.WriteLine("DeleteSchedule after locking");
                 }
             }
         }
