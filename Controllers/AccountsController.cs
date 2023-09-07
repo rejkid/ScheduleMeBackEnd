@@ -338,12 +338,11 @@ public class UserFriendlyException: Exception
             _accountService.Delete(id);
             return Ok(new { message = "Account deleted successfully" });
         }
+
         [HttpGet("role-configuration")]
-        public ActionResult<AuthenticateResponse> RoleConfiguration()
+        public ActionResult<string[]> RoleConfiguration()
         {
-            string s = _appSettings.Roles;
-            string[] subs = s.Split(',');
-            return Ok(subs);
+            return Ok(_accountService.RoleConfiguration());
         }
 
         // helper methods

@@ -25,6 +25,7 @@ using Microsoft.AspNetCore.SignalR;
 using WebApi.Hub;
 using System.Runtime.Serialization;
 using System.Security.Principal;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Services
 {
@@ -47,6 +48,7 @@ namespace WebApi.Services
         AccountResponse Create(CreateRequest model);
         AccountResponse Update(int id, UpdateRequest model);
         public AccountResponse DeleteSchedule(int id, UpdateScheduleRequest scheduleReq);
+
         public AccountResponse AddSchedule(int id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(int id, UpdateScheduleRequest scheduleReq);
         public AccountResponse DeleteFunction(int id, UpdateUserFunctionRequest functionReq);
@@ -60,9 +62,9 @@ namespace WebApi.Services
 
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
 
-
-
         void Delete(int id);
+        public string[] RoleConfiguration();
+
     }
 
     public class AccountService : IAccountService
@@ -1140,20 +1142,6 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
 
-                    // Purge all schedules for the account
-                    //foreach (var item in account.Schedules)
-                    //{
-                    //    _context.Schedules.Remove(item);
-                    //}
-                    //foreach (var item in account.UserFunctions)
-                    //{
-                    //    _context.UserFunctions.Remove(item);
-                    //}
-                    //foreach (var item in account.RefreshTokens)
-                    //{
-                    //    _context.RefreshTokens.Remove(item);
-                    //}
-
                     // Remove children
                     account.Schedules.Clear();
                     account.UserFunctions.Clear();
@@ -1177,6 +1165,33 @@ namespace WebApi.Services
             }
         }
 
+        public string[] RoleConfiguration()
+        {
+            log.Info("RoleConfiguration before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    string s = _appSettings.Roles;
+                    string[] subs = s.Split(',');
+                    return subs;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    log.Error("Delete failed" + ex.Message);
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("RoleConfiguration after locking");
+                }
+            }
+        }
 
         /* Private helper functions */
         private SchedulePoolElement PopFromPool(Account account, UpdateScheduleRequest item)
