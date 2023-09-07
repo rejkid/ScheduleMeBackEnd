@@ -98,7 +98,7 @@ namespace WebApi.Helpers
         }
         public static void SendRemindingEmail4Functions(DataContext context)
         {
-            log.Info("\n");
+            log.Debug("\n");
             var accountAll = context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).ToList();
 
             IEnumerable<Account> query = accountAll.TakeWhile((a) => a.UserFunctions != null);
@@ -118,11 +118,11 @@ namespace WebApi.Helpers
 
                             DateTime dt = DateTime.UtcNow;
                             DateTime now = TimeZoneInfo.ConvertTimeFromUtc(dt/*DateTime.Now*/, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-                            log.InfoFormat("scheduleDate {0} now {1}",
+                            log.DebugFormat("scheduleDate {0} now {1}",
                                 scheduleDate,
                                 now);
 
-                            log.InfoFormat("Schedule `{0}` is now {1} days ahead of execution (negative means it's over)",
+                            log.DebugFormat("Schedule `{0}` is now {1} days ahead of execution (negative means it's over)",
                                 s.Date,
                                 (scheduleDate - now).TotalMilliseconds / (1000*60*60*24));
 
@@ -136,7 +136,7 @@ namespace WebApi.Helpers
                                     html: message
                                 );
                                 s.NotifiedWeekBefore = true;
-                                log.InfoFormat("Schedule ready for week ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
+                                log.DebugFormat("Schedule ready for week ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
                             } 
                             if ((scheduleDate - now) < THREE_DAYS_TIMEOUT && a.NotifyThreeDaysBefore == true && s.NotifiedThreeDaysBefore == false)
                             {
@@ -148,7 +148,7 @@ namespace WebApi.Helpers
                                     html: message
                                 );
                                 s.NotifiedThreeDaysBefore = true;
-                                log.InfoFormat("Schedule ready for 3 days ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
+                                log.DebugFormat("Schedule ready for 3 days ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
                             }
                             context.Accounts.Update(a);
                             context.SaveChanges();
@@ -159,13 +159,13 @@ namespace WebApi.Helpers
                         {
                             transaction.Rollback();
                             Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                            throw ex;
+                            throw;
                         }
                         finally
                         {
                             Monitor.Exit(lockObject);
                             Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
-                            log.Info("MoveSchedule2Pool after locking");
+                            log.Debug("MoveSchedule2Pool after locking");
                         }
                     }
                 }
