@@ -344,8 +344,6 @@ namespace WebApi.Services
                     if (account == null)
                     {
                         throw new AppException("Email or DOB is incorrect");
-                        //transaction.Commit();
-                        //return;
                     }
 
                     // create reset token that expires after 1 day
@@ -364,7 +362,7 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
@@ -396,7 +394,7 @@ namespace WebApi.Services
             {
                 log.InfoFormat("Exception in ValidateResetToken "+ex.Message);
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                throw ex;
+                throw;
             }
             finally
             {
@@ -436,7 +434,7 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
@@ -459,7 +457,7 @@ namespace WebApi.Services
             catch (Exception ex)
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                throw ex;
+                throw;
             }
             finally
             {
