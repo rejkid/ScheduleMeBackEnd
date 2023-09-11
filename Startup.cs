@@ -41,7 +41,7 @@ namespace WebApi
         {
             Configuration = configuration;
              //BasicConfigurator.Configure();
-            log.Debug("Program started");
+            log.Info("\n\n######################################## PROGRAM STARTED ########################################");
         }
 
         // add services to the DI container
@@ -111,7 +111,7 @@ namespace WebApi
 
             // generated swagger json and swagger ui middleware
             app.UseSwagger();
-            app.UseSwaggerUI(x => x.SwaggerEndpoint("/swagger/v1/swagger.json", "ASP.NET Core Sign-up and Verification API"));
+            app.UseSwaggerUI(x => x.SwaggerEndpoint("/swagger/v1/swagger.json", "ASP.NET Core Sign#up and Verification API"));
 
             app.UseRouting();
 
