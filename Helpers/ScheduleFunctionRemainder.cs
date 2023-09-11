@@ -164,7 +164,6 @@ namespace WebApi.Helpers
                         finally
                         {
                             Monitor.Exit(lockObject);
-                            Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                             log.Debug("MoveSchedule2Pool after locking");
                         }
                     }

@@ -635,12 +635,11 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                     log.Info("Create after locking");
                 }
             }
@@ -770,12 +769,11 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                     log.Info("AddSchedule after locking");
                 }
             }
@@ -819,12 +817,11 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                     log.Info("UpdateSchedule after locking");
                 }
             }
@@ -966,12 +963,11 @@ namespace WebApi.Services
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                     log.Info("MoveSchedule2Pool after locking");
                 }
             }
@@ -1022,16 +1018,15 @@ namespace WebApi.Services
                         throw new AppException("The schedule has been already taken");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    Console.WriteLine(Thread.CurrentThread.Name + " Exit from critical section");
                     log.Info("GetScheduleFromPool after locking");
                 }
             }
