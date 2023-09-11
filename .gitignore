@@ -50,3 +50,5 @@ WebApiDatabase.db
 /Properties
 /wwwroot
 /lib
+/WebApiDatabase.db-shm
+/WebApiDatabase.db-wal
