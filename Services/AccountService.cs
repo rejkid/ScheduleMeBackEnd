@@ -26,6 +26,8 @@ using WebApi.Hub;
 using System.Runtime.Serialization;
 using System.Security.Principal;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
+using Spire.Xls;
 
 namespace WebApi.Services
 {
@@ -64,7 +66,7 @@ namespace WebApi.Services
 
         void Delete(int id);
         public string[] RoleConfiguration();
-
+        public ActionResult<string> UploadAccounts(string path);
     }
 
     public class AccountService : IAccountService
@@ -1200,6 +1202,14 @@ namespace WebApi.Services
                     log.Info("RoleConfiguration after locking");
                 }
             }
+        }
+        public ActionResult<string> UploadAccounts(string path)
+        {
+            //Creates workbook
+            Workbook workbook = new Workbook();
+            workbook.LoadFromFile(path);
+
+            return "OK";
         }
 
         /* Private helper functions */

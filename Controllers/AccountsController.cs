@@ -374,8 +374,8 @@ public class UserFriendlyException: Exception
                     {
                         file.CopyTo(stream);
                     }
+                    _accountService.UploadAccounts(fullPath);
                 }
-
                 return Ok(fileName);
             }
             catch (System.Exception ex)
