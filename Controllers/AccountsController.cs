@@ -18,6 +18,10 @@ using AutoMapper.Internal;
 using Microsoft.Extensions.Primitives;
 using Org.BouncyCastle.Ocsp;
 using static Google.Apis.Requests.BatchRequest;
+using System.IO;
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Hosting;
+using System.Threading.Tasks;
 
 namespace WebApi.Controllers
 {
@@ -38,17 +42,19 @@ public class UserFriendlyException: Exception
         private readonly IAccountService _accountService;
         private readonly IMapper _mapper;
         private readonly AppSettings _appSettings;
-        
 
+        private Microsoft.AspNetCore.Hosting.IWebHostEnvironment _hostingEnvironment;
 
         public AccountsController(
             IAccountService accountService,
             IMapper mapper,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            Microsoft.AspNetCore.Hosting.IWebHostEnvironment hostingEnvironment)
         {
             _accountService = accountService;
             _mapper = mapper;
             _appSettings = appSettings.Value;
+            _hostingEnvironment = hostingEnvironment;
         }
 
         
@@ -343,6 +349,39 @@ public class UserFriendlyException: Exception
         public ActionResult<string[]> RoleConfiguration()
         {
             return Ok(_accountService.RoleConfiguration());
+        }
+
+        [Authorize]
+        [HttpPost("upload-accounts"), DisableRequestSizeLimit]
+        public ActionResult<string> UploadAccounts()
+        {
+            try
+            {
+                var file = Request.Form.Files[0];
+                string folderName = "Upload";
+                string webRootPath = _hostingEnvironment.WebRootPath;
+                string newPath = Path.Combine(webRootPath, folderName);
+                if (!Directory.Exists(newPath))
+                {
+                    Directory.CreateDirectory(newPath);
+                }
+                string fileName = "";
+                if (file.Length > 0)
+                {
+                    fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
+                    string fullPath = Path.Combine(newPath, fileName);
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        file.CopyTo(stream);
+                    }
+                }
+
+                return Ok(fileName);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // helper methods

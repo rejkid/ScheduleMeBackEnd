@@ -3,6 +3,7 @@ using log4net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.IO;
 using System.Threading;
 
 using WebApi.Helpers;
@@ -49,7 +50,9 @@ namespace WebApi
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    webBuilder.UseStartup<Startup>()
+                    .UseContentRoot(Directory.GetCurrentDirectory())
+                    .UseWebRoot("wwwroot");
                     //.UseUrls("https://192.168.0.19:4000");
                     //.UseUrls("http://192.168.0.19:4000");
                     //.UseUrls("http://localhost:4000");

@@ -158,6 +158,7 @@ namespace WebApi.Helpers
                         catch (Exception ex)
                         {
                             transaction.Rollback();
+                            log.Error(Thread.CurrentThread.Name + "Error occurred in SendRemindingEmail4Functions:", ex);
                             Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                             throw;
                         }
