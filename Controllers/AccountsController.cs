@@ -345,6 +345,7 @@ public class UserFriendlyException: Exception
             return Ok(new { message = "Account deleted successfully" });
         }
 
+        [Authorize]
         [HttpGet("role-configuration")]
         public ActionResult<string[]> RoleConfiguration()
         {
@@ -384,12 +385,14 @@ public class UserFriendlyException: Exception
             }
         }
 
+        [Authorize]
         [HttpGet("auto-email")]
         public ActionResult<Boolean> GetAutoEmail()
         {
             return Ok(_accountService.GetAutoEmail());
         }
 
+        [Authorize]
         [HttpPut("auto-email")]
         public ActionResult<Boolean> SetAutoEmail([FromBody] Boolean autoEmail)
         {
