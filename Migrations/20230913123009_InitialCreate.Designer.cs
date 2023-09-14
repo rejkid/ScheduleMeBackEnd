@@ -11,8 +11,8 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20230710082514_AddedScheduleGroup")]
-    partial class AddedScheduleGroup
+    [Migration("20230913123009_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -219,9 +219,20 @@ namespace WebApi.Migrations
                     b.Property<uint>("NoOfEmailsSentDayily")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("autoEmail")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemInformation");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            NoOfEmailsSentDayily = 1u,
+                            autoEmail = true
+                        });
                 });
 
             modelBuilder.Entity("WebApi.Entities.Function", b =>

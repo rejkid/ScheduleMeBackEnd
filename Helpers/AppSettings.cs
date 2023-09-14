@@ -14,7 +14,6 @@ namespace WebApi.Helpers
         public string SmtpUser { get; set; }
         public string SmtpPass { get; set; }
         public string Roles { get; set; }
-        public string autoEmail { get; set; }
         public string ClientTimeZoneId { get; set; }
     }
 }

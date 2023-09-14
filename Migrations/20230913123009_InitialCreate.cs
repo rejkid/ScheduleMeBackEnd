@@ -50,7 +50,8 @@ namespace WebApi.Migrations
                     Date = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Required = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserAvailability = table.Column<bool>(type: "INTEGER", nullable: false),
-                    UserFunction = table.Column<string>(type: "TEXT", nullable: true)
+                    UserFunction = table.Column<string>(type: "TEXT", nullable: true),
+                    ScheduleGroup = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -63,7 +64,8 @@ namespace WebApi.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    NoOfEmailsSentDayily = table.Column<uint>(type: "INTEGER", nullable: false)
+                    NoOfEmailsSentDayily = table.Column<uint>(type: "INTEGER", nullable: false),
+                    autoEmail = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -105,6 +107,7 @@ namespace WebApi.Migrations
                     Required = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserAvailability = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
+                    ScheduleGroup = table.Column<string>(type: "TEXT", nullable: true),
                     NotifiedWeekBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     NotifiedThreeDaysBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     NoOfTimesAssigned = table.Column<uint>(type: "INTEGER", nullable: false),
@@ -139,6 +142,11 @@ namespace WebApi.Migrations
                         principalTable: "Accounts",
                         principalColumn: "AccountId");
                 });
+
+            migrationBuilder.InsertData(
+                table: "SystemInformation",
+                columns: new[] { "Id", "NoOfEmailsSentDayily", "autoEmail" },
+                values: new object[] { 1, 1u, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_AccountId",

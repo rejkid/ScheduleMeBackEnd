@@ -19,14 +19,16 @@ namespace WebApi.Helpers
 
         public DbSet<Function> UserFunctions { get; set; }
         public DbSet<SchedulePoolElement> SchedulePoolElements { get; set; }
-        
+
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         private readonly IConfiguration Configuration;
 
+
         public DataContext(IConfiguration configuration)
         {
             Configuration = configuration;
+
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -34,9 +36,16 @@ namespace WebApi.Helpers
             // connect to sqlite database
             options.UseSqlite(Configuration.GetConnectionString("WebApiDatabase"));
         }
-        //protected override void OnModelCreating(ModelBuilder modelBuilder)
-        //{
-        //    modelBuilder.Entity<Account>().HasMany(e => e.RefreshTokens).WithOne(e => e.Account).IsRequired();
-        //}
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            //modelBuilder.Entity<Account>().HasMany(e => e.RefreshTokens).WithOne(e => e.Account).IsRequired();
+            modelBuilder.Entity<SystemInfo>().HasData(
+            new SystemInfo
+            {
+                Id = 1,
+                NoOfEmailsSentDayily = 1,
+                autoEmail = true
+            });
+        }
     }
 }

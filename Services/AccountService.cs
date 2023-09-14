@@ -28,6 +28,7 @@ using System.Security.Principal;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using Spire.Xls;
+using Microsoft.Extensions.Configuration;
 
 namespace WebApi.Services
 {
@@ -67,10 +68,17 @@ namespace WebApi.Services
         void Delete(int id);
         public string[] RoleConfiguration();
         public ActionResult<string> UploadAccounts(string path);
+        public bool GetAutoEmail();
+        public bool SetAutoEmail(bool autoEmail);
+        public void SendRemindingEmail4Functions();
+
     }
 
     public class AccountService : IAccountService
     {
+        public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
+        public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
+
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private readonly DataContext _context;
         private readonly IMapper _mapper;
@@ -78,18 +86,23 @@ namespace WebApi.Services
         private readonly IEmailService _emailService;
         public static readonly object lockObject = new object();
         private readonly IHubContext<MessageHub, IMessageHubClient> _hubContext;
+        private IConfiguration _configuration;
+
         public AccountService(
             DataContext context,
             IMapper mapper,
             IOptions<AppSettings> appSettings,
             IEmailService emailService,
-            IHubContext<MessageHub, IMessageHubClient> hubContext)
+            IHubContext<MessageHub, IMessageHubClient> hubContext,
+            IConfiguration configuration
+            )
         {
             _context = context;
             _mapper = mapper;
             _appSettings = appSettings.Value;
             _emailService = emailService;
             _hubContext = hubContext;
+            _configuration = configuration;
         }
 
         public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
@@ -927,12 +940,11 @@ namespace WebApi.Services
             log.Info("MoveSchedule2Pool before locking");
             Monitor.Enter(lockObject);
 
+            var autoEmail = GetAutoEmail();
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
                 {
-                    var autEmail = bool.Parse(_appSettings.autoEmail);
-
                     var account = getAccount(id);
                     log.InfoFormat("MoveSchedule2Pool before locking for {0}. Date {1} function {2}",
                         account.FirstName, scheduleReq.Date, scheduleReq.UserFunction);
@@ -941,7 +953,6 @@ namespace WebApi.Services
 
                     foreach (var item in account.Schedules)
                     {
-
                         if (DateTime.Compare(item.Date, scheduleReq.Date) == 0 && item.UserFunction == scheduleReq.UserFunction)
                         {
                             toRemove = item;
@@ -960,7 +971,7 @@ namespace WebApi.Services
                         _context.SaveChanges();
                         _hubContext.Clients.All.SendUpdate(id);
 
-                        if (autEmail)
+                        if (autoEmail)
                         {
                             SendEmail2AllRolesAndAdmins(account, toRemove);
                         }
@@ -1235,6 +1246,141 @@ namespace WebApi.Services
             else
             {
                 return null;
+            }
+        }
+        public Boolean GetAutoEmail()
+        {
+            log.Info("GetAutoEmail before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var systemInformation = _context.SystemInformation.ToList().FirstOrDefault();
+                    _context.Entry(systemInformation).Reload();
+                    var retval = systemInformation.autoEmail;
+                    return retval;
+                    
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetAutoEmail:", ex);
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("GetAutoEmail after locking");
+                }
+            }
+        }
+
+        public Boolean SetAutoEmail(Boolean autoEmail)
+        {
+            log.Info("SetAutoEmail before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var systemInformation = _context.SystemInformation.ToList().FirstOrDefault();
+                    systemInformation.autoEmail = autoEmail;
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    return systemInformation.autoEmail;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in SetAutoEmail:", ex);
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("SetAutoEmail after locking");
+                }
+            }
+        }
+        
+        public void SendRemindingEmail4Functions()
+        {
+            log.Info("SendRemindingEmail4Functions before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    log.Debug("\n");
+                    var accountAll = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).ToList();
+
+                    IEnumerable<Account> query = accountAll.TakeWhile((a) => a.UserFunctions != null);
+                    foreach (var a in accountAll)
+                    {
+                        foreach (var s in a.Schedules)
+                        {
+                            string clientTimeZoneId = _configuration["AppSettings:ClientTimeZoneId"];
+                            DateTime scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(s.Date, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+
+                            DateTime dt = DateTime.UtcNow;
+                            DateTime now = TimeZoneInfo.ConvertTimeFromUtc(dt/*DateTime.Now*/, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+                            log.DebugFormat("scheduleDate {0} now {1}",
+                                scheduleDate,
+                                now);
+
+                            log.DebugFormat("Schedule `{0}` is now {1} days ahead of execution (negative means it's over)",
+                                s.Date,
+                                (scheduleDate - now).TotalMilliseconds / (1000 * 60 * 60 * 24));
+
+                            if ((scheduleDate - now) < WEEK_TIMEOUT && a.NotifyWeekBefore == true && s.NotifiedWeekBefore == false)
+                            {
+                                string message = $@"This is a weekly reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
+                                string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
+                                _emailService.Send(
+                                    to: a.Email,
+                                    subject: subject,
+                                    html: message
+                                );
+                                s.NotifiedWeekBefore = true;
+                                log.DebugFormat("Schedule ready for week ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
+                            }
+                            if ((scheduleDate - now) < THREE_DAYS_TIMEOUT && a.NotifyThreeDaysBefore == true && s.NotifiedThreeDaysBefore == false)
+                            {
+                                string message = $@"This is a three-day reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
+                                string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
+                                _emailService.Send(
+                                    to: a.Email,
+                                    subject: subject,
+                                    html: message
+                                );
+                                s.NotifiedThreeDaysBefore = true;
+                                log.DebugFormat("Schedule ready for 3 days ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
+                            }
+                            _context.Accounts.Update(a);
+                            _context.SaveChanges();
+
+                            transaction.Commit();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in SendRemindingEmail4Functions:", ex);
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Debug("SendRemindingEmail4Functions after locking");
+                }
             }
         }
 

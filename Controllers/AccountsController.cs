@@ -376,12 +376,24 @@ public class UserFriendlyException: Exception
                     }
                     _accountService.UploadAccounts(fullPath);
                 }
-                return Ok(fileName);
+                return Ok();
             }
             catch (System.Exception ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        [HttpGet("auto-email")]
+        public ActionResult<Boolean> GetAutoEmail()
+        {
+            return Ok(_accountService.GetAutoEmail());
+        }
+
+        [HttpPut("auto-email")]
+        public ActionResult<Boolean> SetAutoEmail([FromBody] Boolean autoEmail)
+        {
+            return Ok(_accountService.SetAutoEmail(autoEmail));
         }
 
         // helper methods

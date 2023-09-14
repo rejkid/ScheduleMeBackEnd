@@ -21,18 +21,16 @@ namespace WebApi.Helpers
 {
     public class ScheduleFunctionRemainder// : IScheduleFunctionRemainderService
     {
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-        public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
-        public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
         public static TimeSpan HOUR_TIMEOUT = new TimeSpan(0, /*1*/0, /*0*/1, 0);         // Hourly timeout
+
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private static bool terminate = false;
         private static DataContext _context;
         private static IEmailService _emailService;
+        private static IAccountService _accountService;
         private readonly IServiceScope scope;
         private static IConfiguration _configuration;
-        static readonly object lockObject = AccountService.lockObject; // Share locing object with account service
 
         public ScheduleFunctionRemainder(IServiceProvider provider)
         {
@@ -40,13 +38,12 @@ namespace WebApi.Helpers
             _context = scope.ServiceProvider.GetRequiredService<DataContext>();
             _emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
             _configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            _accountService = scope.ServiceProvider.GetRequiredService<IAccountService>(); ;
         }
 
         // This method is called by the timer delegate.
         public static void CheckStatus(/*Object stateInfo*/)
         {
-            var autEmail = _configuration.GetSection("AppSettings").GetValue<Boolean>("autoEmail");
-
             DateTime prevDate = DateTime.Now;
 
             Console.WriteLine("Checking status {0}.", DateTime.Now.ToString("h:mm:ss.fff"));
@@ -60,26 +57,11 @@ namespace WebApi.Helpers
 
                 if (ts.TotalMilliseconds > HOUR_TIMEOUT.TotalMilliseconds) // Send e-mail every hour
                 {
-                    DataContext localContext = null;
+                    prevDate = DateTime.Now;
 
-                    Monitor.Enter(lockObject);
-                    try
+                    if (_accountService.GetAutoEmail())
                     {
-                        localContext = new DataContext(_configuration/*new DbContextOptionsBuilder<DataContext>()*/);
-                        prevDate = DateTime.Now;
-
-                        if (autEmail)
-                        {
-                            SendRemindingEmail4Functions(localContext);
-                        }
-                    }
-                    finally
-                    {
-                        if (localContext != null)
-                        {
-                            localContext.Dispose();
-                        }
-                        Monitor.Exit(lockObject);
+                        _accountService.SendRemindingEmail4Functions();
                     }
                 }
                 Thread.Sleep(500);
@@ -95,81 +77,6 @@ namespace WebApi.Helpers
         public void Terminate()
         {
             terminate = true;
-        }
-        public static void SendRemindingEmail4Functions(DataContext context)
-        {
-            log.Debug("\n");
-            var accountAll = context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).ToList();
-
-            IEnumerable<Account> query = accountAll.TakeWhile((a) => a.UserFunctions != null);
-            foreach (var a in accountAll)
-            {
-
-                foreach (var s in a.Schedules)
-                {
-                   
-                    Monitor.Enter(lockObject);
-                    using (IDbContextTransaction transaction = context.Database.BeginTransaction())
-                    {
-                        try
-                        {
-                            string clientTimeZoneId = _configuration["AppSettings:ClientTimeZoneId"];
-                            DateTime scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(s.Date, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
-                            DateTime dt = DateTime.UtcNow;
-                            DateTime now = TimeZoneInfo.ConvertTimeFromUtc(dt/*DateTime.Now*/, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-                            log.DebugFormat("scheduleDate {0} now {1}",
-                                scheduleDate,
-                                now);
-
-                            log.DebugFormat("Schedule `{0}` is now {1} days ahead of execution (negative means it's over)",
-                                s.Date,
-                                (scheduleDate - now).TotalMilliseconds / (1000*60*60*24));
-
-                            if ((scheduleDate - now) < WEEK_TIMEOUT && a.NotifyWeekBefore == true && s.NotifiedWeekBefore == false)
-                            {
-                                string message = $@"This is a weekly reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
-                                string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
-                                _emailService.Send(
-                                    to: a.Email,
-                                    subject: subject,
-                                    html: message
-                                );
-                                s.NotifiedWeekBefore = true;
-                                log.DebugFormat("Schedule ready for week ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
-                            } 
-                            if ((scheduleDate - now) < THREE_DAYS_TIMEOUT && a.NotifyThreeDaysBefore == true && s.NotifiedThreeDaysBefore == false)
-                            {
-                                string message = $@"This is a three-day reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
-                                string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
-                                _emailService.Send(
-                                    to: a.Email,
-                                    subject: subject,
-                                    html: message
-                                );
-                                s.NotifiedThreeDaysBefore = true;
-                                log.DebugFormat("Schedule ready for 3 days ahead of reminder for an account is: {0} {1} {2}", a.FirstName, a.LastName, a.Email);
-                            }
-                            context.Accounts.Update(a);
-                            context.SaveChanges();
-
-                            transaction.Commit();
-                        }
-                        catch (Exception ex)
-                        {
-                            transaction.Rollback();
-                            log.Error(Thread.CurrentThread.Name + "Error occurred in SendRemindingEmail4Functions:", ex);
-                            Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                            throw;
-                        }
-                        finally
-                        {
-                            Monitor.Exit(lockObject);
-                            log.Debug("MoveSchedule2Pool after locking");
-                        }
-                    }
-                }
-            }
         }
     }
 }

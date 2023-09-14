@@ -216,9 +216,20 @@ namespace WebApi.Migrations
                     b.Property<uint>("NoOfEmailsSentDayily")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("autoEmail")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemInformation");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            NoOfEmailsSentDayily = 1u,
+                            autoEmail = true
+                        });
                 });
 
             modelBuilder.Entity("WebApi.Entities.Function", b =>
