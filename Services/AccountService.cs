@@ -1379,7 +1379,7 @@ namespace WebApi.Services
                 finally
                 {
                     Monitor.Exit(lockObject);
-                    log.Debug("SendRemindingEmail4Functions after locking");
+                    log.Info("SendRemindingEmail4Functions after locking");
                 }
             }
         }
