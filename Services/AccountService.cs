@@ -961,7 +961,7 @@ namespace WebApi.Services
                     }
                     if (toRemove != null)
                     {
-                        log.Info("MoveSchedule2Pool putting: " + scheduleReq.UserFunction + " to pool");
+                        log.Info("MoveSchedule2Pool putting: " + scheduleReq.Date + "/" + scheduleReq.UserFunction + " to pool");
                         PushToPool(account, scheduleReq);
 
                         account.Schedules.Remove(toRemove);
@@ -1009,7 +1009,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    log.Info("MoveSchedule2Pool removing: " + scheduleReq.UserFunction + " from pool");
+                    log.Info("GetScheduleFromPool removing: " + scheduleReq.UserFunction + " from pool");
 
                     var account = getAccount(id);
 
@@ -1364,10 +1364,9 @@ namespace WebApi.Services
                             }
                             _context.Accounts.Update(a);
                             _context.SaveChanges();
-
-                            transaction.Commit();
                         }
                     }
+                    transaction.Commit();
                 }
                 catch (Exception ex)
                 {

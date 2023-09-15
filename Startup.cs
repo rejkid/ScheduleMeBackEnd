@@ -25,6 +25,8 @@ using System.Collections.Generic;
 using Google.Apis.Gmail.v1.Data;
 using WebApi.Hub;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 [assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
 namespace WebApi
@@ -95,6 +97,11 @@ namespace WebApi
             // configure DI for application services
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IEmailService, EmailService>();
+
+            services.AddControllers(config =>
+            {
+                config.Filters.Add(typeof(WebApiActionFilter)/*Configuration.GetSection("AppSettings").Get<AppSettings>()*/);
+            });
         }
 
         // configure the HTTP request pipeline
