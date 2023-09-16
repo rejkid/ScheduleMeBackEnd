@@ -814,10 +814,10 @@ namespace WebApi.Services
                 try
                 {
                     var account = getAccount(id);
-                    
+
                     foreach (var schedule in account.Schedules)
                     {
-                        if(schedule.Date.CompareTo(scheduleReq.Date) == 0 && schedule.UserFunction == scheduleReq.UserFunction)
+                        if (schedule.Date.CompareTo(scheduleReq.Date) == 0 && schedule.UserFunction == scheduleReq.UserFunction)
                         {
                             schedule.Date = scheduleReq.NewDate;
                             schedule.UserFunction = scheduleReq.NewUserFunction;
@@ -1261,7 +1261,7 @@ namespace WebApi.Services
                     _context.Entry(systemInformation).Reload();
                     var retval = systemInformation.autoEmail;
                     return retval;
-                    
+
                 }
                 catch (Exception ex)
                 {
@@ -1307,7 +1307,7 @@ namespace WebApi.Services
                 }
             }
         }
-        
+
         public void SendRemindingEmail4Functions()
         {
             log.Info("SendRemindingEmail4Functions before locking");
@@ -1459,6 +1459,14 @@ namespace WebApi.Services
 
         private string generateJwtToken(Account account)
         {
+            /*
+             * Normally the JWT signature is validated on the server (in our case in JwtMiddleware),
+             * when the JWT is sent back with each request (in a cookie or in the Authorization header). 
+             * This is to validate that the JWT has not been altered. 
+             * If the JWT was signed using a secret key, having it in the client puts the secret at risk of exposure
+             * - particularly when using a browser-based client such as Angular. If the secret is compromised, 
+             * it can then can be used to alter and sign a JWT with changes made.
+            */
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -1474,10 +1482,11 @@ namespace WebApi.Services
             var ticks = long.Parse(tokenExp);
             var tokenDate = DateTimeOffset.FromUnixTimeSeconds(ticks).UtcDateTime;
             var Expires = DateTime.Now.AddMinutes(15);
-            //log.Info("JWT expiration date for : " + account.FirstName + + tokenDate.ToLocalTime().ToString());
             log.InfoFormat("JWT Next expiration date for {0} {1} is {2}", account.FirstName, account.LastName, tokenDate.ToLocalTime().ToString());
             // JD
-            return tokenHandler.WriteToken(token);
+            string jwtToken = tokenHandler.WriteToken(token);
+            log.InfoFormat("JWT token {0} for {1} {2}", jwtToken, account.FirstName, account.LastName);
+            return jwtToken;
         }
         /* JD Test*/
         private Task<string> GetJWTToken(string user)
@@ -1576,7 +1585,7 @@ namespace WebApi.Services
             else
             {
                 message = $@"<p>Please use the below token to verify your email address with the <code>/accounts/verify-email</code> api route:</p>
-                             <p><code>{account.VerificationToken+"&"+ scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}</code></p>";
+                             <p><code>{account.VerificationToken + "&" + scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}</code></p>";
             }
 
             _emailService.Send(
