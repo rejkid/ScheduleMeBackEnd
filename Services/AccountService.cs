@@ -1009,7 +1009,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    log.Info("GetScheduleFromPool removing: " + scheduleReq.UserFunction + " from pool");
+                    log.Info("GetScheduleFromPool removing: " + scheduleReq.Date + "/" + scheduleReq.UserFunction + " from pool");
 
                     var account = getAccount(id);
 
