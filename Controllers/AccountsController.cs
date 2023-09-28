@@ -405,7 +405,7 @@ public class UserFriendlyException: Exception
         {
             var cookieOptions = new CookieOptions
             {
-                HttpOnly = false,
+                HttpOnly = true,
                 Expires = DateTime.UtcNow.AddDays(7),
                 Secure = true,
                 SameSite = SameSiteMode.None

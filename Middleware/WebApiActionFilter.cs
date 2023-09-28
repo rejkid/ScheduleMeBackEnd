@@ -52,15 +52,17 @@ namespace WebApi.Middleware
                 var accountId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
 
                 var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.AccountId == accountId);
-                //Account account = (Account)context.HttpContext.Items["Account"];
-                log.InfoFormat("\n\n----------------------- Start processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3}  path:{4}",
-                account.AccountId,
-                account.FirstName,
-                account.LastName,
-                    account.Email,
-                    context.HttpContext.Request.Path
-                    );
-                //}
+                if (account != null)
+                {
+                    //Account account = (Account)context.HttpContext.Items["Account"];
+                    log.InfoFormat("\n\n----------------------- Start processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3}  path:{4}",
+                    account.AccountId,
+                    account.FirstName,
+                    account.LastName,
+                        account.Email,
+                        context.HttpContext.Request.Path
+                        );
+                }
             }
             catch (Exception error)
             {

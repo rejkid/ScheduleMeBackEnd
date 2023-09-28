@@ -100,7 +100,7 @@ namespace WebApi
 
             services.AddControllers(config =>
             {
-                config.Filters.Add(typeof(WebApiActionFilter)/*Configuration.GetSection("AppSettings").Get<AppSettings>()*/);
+                config.Filters.Add(typeof(WebApiActionFilter));
             });
         }
 
