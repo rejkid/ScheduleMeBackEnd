@@ -10,11 +10,10 @@ using System;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Channels;
-using WebApi.Helpers;
 using System.IO;
 using System.Threading.Tasks;
-using Org.BouncyCastle.Security;
 using GenerateEncryptedPassword;
+using WebApi.Helpers;
 
 namespace WebApi.Services
 {
@@ -33,7 +32,7 @@ namespace WebApi.Services
         public EmailService(IOptions<AppSettings> appSettings)
         {
             _appSettings = appSettings.Value;
-            Password = AesOperation.DecryptString(ProgramHelpers.symetricKey, _appSettings.SmtpPass);
+            Password = AdvancedEncryptionStandardOperation.DecryptString(ConstantsDefined.symetricKey, _appSettings.SmtpPass);
         }
 
         public void Send(string to, string subject, string html, string from = null)
