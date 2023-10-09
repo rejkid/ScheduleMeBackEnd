@@ -34,7 +34,9 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.31.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GenerateEncryptedPassword\GenerateEncryptedPassword.csproj" />
+    <Reference Include="GenerateEncryptedPassword">
+      <HintPath>..\GenerateEncryptedPassword\bin\Debug\net7.0-windows\GenerateEncryptedPassword.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">

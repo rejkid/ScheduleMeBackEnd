@@ -33,7 +33,7 @@ namespace WebApi.Services
         public EmailService(IOptions<AppSettings> appSettings)
         {
             _appSettings = appSettings.Value;
-            Password = AesOperation.DecryptString(GenerateEncryptedPassword.Program.symetricKey, _appSettings.SmtpPass);
+            Password = AesOperation.DecryptString(ProgramHelpers.symetricKey, _appSettings.SmtpPass);
         }
 
         public void Send(string to, string subject, string html, string from = null)
