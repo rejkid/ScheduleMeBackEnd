@@ -27,6 +27,8 @@ using WebApi.Hub;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Identity;
+using WebApi.Entities;
 
 [assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
 namespace WebApi
@@ -42,7 +44,7 @@ namespace WebApi
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-             //BasicConfigurator.Configure();
+            //BasicConfigurator.Configure();
             log.Info("\n\n######################################## PROGRAM STARTED ########################################");
         }
 
@@ -50,6 +52,14 @@ namespace WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<DataContext>();
+
+            services.AddIdentity<Account, IdentityRole>(options =>
+            {
+                options.User.RequireUniqueEmail = false;
+            })
+            .AddEntityFrameworkStores<DataContext>()
+            .AddDefaultTokenProviders();
+
             services.AddCors();
             //services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.IgnoreNullValues = true);
             services.AddControllers().AddJsonOptions(options =>
@@ -61,7 +71,7 @@ namespace WebApi
             services.AddSwaggerGen();
 
             services.AddSignalR();
-            
+
             /* Add authenticate */
             //services.AddAuthentication(options =>
             //{
@@ -102,6 +112,14 @@ namespace WebApi
             {
                 config.Filters.Add(typeof(WebApiActionFilter));
             });
+
+            /* JD experiment start */
+            //services.AddScoped<IUserClaimsPrincipalFactory<IdentityUser>,
+            //        AdditionalUserClaimsPrincipalFactory>();
+
+            //services.AddAuthorization(options =>
+            //    options.AddPolicy("TwoFactorEnabled", x => x.RequireClaim("amr", "mfa")));
+            /* JD experiment end */
         }
 
         // configure the HTTP request pipeline

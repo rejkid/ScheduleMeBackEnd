@@ -49,14 +49,15 @@ namespace WebApi.Middleware
                 }, out SecurityToken validatedToken);
 
                 var jwtToken = (JwtSecurityToken)validatedToken;
-                var accountId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                //var Id = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                var Id = jwtToken.Claims.First(x => x.Type == "id").Value;
 
-                var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.AccountId == accountId);
+                var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Id == Id);
                 if (account != null)
                 {
                     //Account account = (Account)context.HttpContext.Items["Account"];
-                    log.InfoFormat("\n\n----------------------- Start processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3}  path:{4}",
-                    account.AccountId,
+                    log.InfoFormat("\n\n----------------------- Start processing request for  Id:{0} First Name:{1} Last Name:{2} e-mail:{3}  path:{4}",
+                    account.Id,
                     account.FirstName,
                     account.LastName,
                         account.Email,
@@ -84,63 +85,43 @@ namespace WebApi.Middleware
 
             try
             {
-                //if (token != null)
-                //{
-                //    var handler = new JwtSecurityTokenHandler();
-                //    var jsonToken = handler.ReadToken(token);
-                //    var tokenS = jsonToken as JwtSecurityToken;
-                //    bool tokenValid = CheckTokenIsValid(token);
-                //    if (!tokenValid)
-                //    {
-                //        // Find out the reason why it is not valid and log it
-                //        var jwtSecurityToken = handler.ReadJwtToken(token);
-                //        var jwtTokenTest = (JwtSecurityToken)jwtSecurityToken;
-                //        var accountID = int.Parse(jwtTokenTest.Claims.First(x => x.Type == "id").Value);
-                //        var accountTest = _context.Accounts.FindAsync(accountID);
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
 
-                //        var tokenExpTest = jwtTokenTest.Claims.First(claim => claim.Type.Equals("exp")).Value;
-                //        var ticksTest = long.Parse(tokenExpTest);
-                //        var tokenDateTest = DateTimeOffset.FromUnixTimeSeconds(ticksTest).UtcDateTime;
-                //        log.InfoFormat("JWT expiration(Invalid) date for {0} {1} was {2}", accountTest.FirstName, accountTest.LastName, tokenDateTest.ToLocalTime().ToString());
-                //        var accountIdTest = int.Parse(jwtTokenTest.Claims.Where(x => x.Type == "id").FirstOrDefault().Value); //int.Parse();
-                //        var securityToken = handler.ReadToken(token) as JwtSecurityToken;
-                //        var stringClaimValue = securityToken.Claims.First(claim => claim.Type == "id").Value;
-                //    }
+                //SecurityToken validatedToken = new SecurityToken();
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
 
-                    var tokenHandler = new JwtSecurityTokenHandler();
-                    var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
+                var jwtToken = (JwtSecurityToken)validatedToken;
+                //var Id = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                var Id = jwtToken.Claims.First(x => x.Type == "id").Value;
 
-                    //SecurityToken validatedToken = new SecurityToken();
-                    tokenHandler.ValidateToken(token, new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuer = false,
-                        ValidateAudience = false,
-                        // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
-                        ClockSkew = TimeSpan.Zero
-                    }, out SecurityToken validatedToken);
-
-                    var jwtToken = (JwtSecurityToken)validatedToken;
-                    var accountId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
-
-                    var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.AccountId == accountId);
-                    log.InfoFormat("\n----------------------- Finish processing request for  AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3} path:{4}\n\n",
-                        account.AccountId,
-                        account.FirstName,
-                        account.LastName,
-                        account.Email,
-                        context.HttpContext.Request.Path
-                        );
-                //}
+                var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Id == Id);
+                if (account != null)
+                {
+                    log.InfoFormat("\n----------------------- Finish processing request for  Id:{0} First Name:{1} Last Name:{2} e-mail:{3} path:{4}\n\n",
+                    account.Id,
+                    account.FirstName,
+                    account.LastName,
+                    account.Email,
+                    context.HttpContext.Request.Path
+                    );
+                }
             }
             catch (Exception error)
             {
                 // do nothing if jwt validation fails
                 // account is not attached to context so request won't have access to secure routes
                 //var account = context.HttpContext.Items["Account"];
-                //Console.WriteLine("Failed:" + error);
-                //log.Info("JWT (expired): for path: " + context.HttpContext.Request.Path);
+                Console.WriteLine("Failed:" + error);
+                //log.Warn("JWT (expired): for path: " + context.HttpContext.Request.Path);
             }
         }
 

@@ -7,10 +7,10 @@ using System.Linq;
 using WebApi.Entities;
 using log4net;
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 public class AuthorizeAttribute : Attribute, IAuthorizationFilter
 {
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
     private readonly IList<Role> _roles;
 
@@ -25,7 +25,7 @@ public class AuthorizeAttribute : Attribute, IAuthorizationFilter
         // JD
         var httpContext = context.HttpContext;
         var actionDescriptor = context.ActionDescriptor.DisplayName;
-        
+
         // get user name
         string userName = httpContext.User.Identity.Name;
         // JD

@@ -1,36 +1,26 @@
 ﻿using AutoMapper;
+using log4net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using WebApi.Entities;
-using WebApi.Models.Accounts;
-using WebApi.Services;
-using Microsoft.Extensions.Options;
-
-using WebApi.Helpers;
-
-using log4net;
-using System.Linq;
-using Microsoft.EntityFrameworkCore.Internal;
-using AutoMapper.Internal;
-using Microsoft.Extensions.Primitives;
-using Org.BouncyCastle.Ocsp;
-using static Google.Apis.Requests.BatchRequest;
 using System.IO;
 using System.Net.Http.Headers;
-using Microsoft.AspNetCore.Hosting;
 using System.Threading.Tasks;
+using WebApi.Entities;
+using WebApi.Helpers;
+using WebApi.Models.Accounts;
+using WebApi.Services;
 
 namespace WebApi.Controllers
 {
-public class UserFriendlyException: Exception
+    public class UserFriendlyException : Exception
     {
         public UserFriendlyException(string message) : base(message) { }
         public UserFriendlyException(string message, Exception innerException) : base(message, innerException) { }
     }
-    
+
     [ApiController]
     [Route("[controller]")]
     public class AccountsController : BaseController
@@ -38,7 +28,7 @@ public class UserFriendlyException: Exception
         #region log4net
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         #endregion //log4net
-        
+
         private readonly IAccountService _accountService;
         private readonly IMapper _mapper;
         private readonly AppSettings _appSettings;
@@ -57,7 +47,7 @@ public class UserFriendlyException: Exception
             _hostingEnvironment = hostingEnvironment;
         }
 
-        
+
         [HttpPost("authenticate")]
         public ActionResult<AuthenticateResponse> Authenticate(AuthenticateRequest model)
         {
@@ -76,13 +66,13 @@ public class UserFriendlyException: Exception
             return Ok(response);
         }
 
-        
+
         [HttpPost("refresh-token")]
         public ActionResult<AuthenticateResponse> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
 
-            Console.WriteLine("refreshToken is:"+refreshToken);
+            Console.WriteLine("refreshToken is:" + refreshToken);
             var response = _accountService.RefreshToken(refreshToken, ipAddress());
             setTokenCookie(response.RefreshToken);
 
@@ -112,8 +102,46 @@ public class UserFriendlyException: Exception
         [HttpPost("register")]
         public IActionResult Register(RegisterRequest model)
         {
-            _accountService.Register(model, Request.Headers["origin"]);
-            return Ok(new { message = "Registration successful, please check your email for verification instructions" });
+            var result = _accountService.Register(model, Request.Headers["origin"]);
+            if (result.Result.Succeeded)
+            {
+                return Ok(new { message = "Registration successful, please check your email for verification instructions" });
+            }
+            else
+            {
+                return BadRequest(result.Result.ToString());
+            }
+        }
+        [Authorize(Role.Admin)]
+        [HttpPost]
+        public ActionResult<AccountResponse> Create(CreateRequest model)
+        {
+            try
+            {
+                Task<AccountResponse> response = _accountService.Create(model);
+                return Ok(response.Result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message); ;
+            }
+
+        }
+
+        [Authorize]
+        [HttpPut("{id}")]
+        public ActionResult<AccountResponse> Update(string id, UpdateRequest model)
+        {
+            // users can update their own account and admins can update any account
+            if (id != Account.Id && Account.Role != Role.Admin)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            // only admins can update role
+            if (Account.Role != Role.Admin)
+                model.Role = null;
+
+            var response = _accountService.Update(id, model);
+            return Ok(response.Result);
         }
 
         [HttpPost("verify-email")]
@@ -135,7 +163,7 @@ public class UserFriendlyException: Exception
         [HttpPost("validate-reset-token")]
         public IActionResult ValidateResetToken(ValidateResetTokenRequest model)
         {
-            
+
             _accountService.ValidateResetToken(model);
             return Ok(new { message = "Token is valid" });
         }
@@ -156,16 +184,16 @@ public class UserFriendlyException: Exception
         }
 
         [Authorize]
-        [HttpGet("{id:int}")]
-        public ActionResult<AccountResponse> GetById(int id)
+        [HttpGet("{id}")]
+        public ActionResult<AccountResponse> GetById(string id)
         {
             var account = _accountService.GetById(id);
             // users can get their own account and admins can get any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
             {
-                log.ErrorFormat("User AccountId:{0} First Name:{1} Last Name:{2} e-mail:{3} tried to get the info about \n " +
-                    "AccountId:{4} First Name:{5} Last Name:{6} e-mail:{7}",
-                    Account.AccountId,
+                log.ErrorFormat("User Id:{0} First Name:{1} Last Name:{2} e-mail:{3} tried to get the info about \n " +
+                    "Id:{4} First Name:{5} Last Name:{6} e-mail:{7}",
+                    Account.Id,
                     Account.FirstName,
                     Account.LastName,
                     Account.Email,
@@ -197,35 +225,12 @@ public class UserFriendlyException: Exception
             return Ok(users);
         }
 
-        [Authorize(Role.Admin)]
-        [HttpPost]
-        public ActionResult<AccountResponse> Create(CreateRequest model)
-        {
-            var account = _accountService.Create(model);
-            return Ok(account);
-        }
-
-        [Authorize]
-        [HttpPut("{id:int}")]
-        public ActionResult<AccountResponse> Update(int id, UpdateRequest model)
-        {
-            // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
-                return Unauthorized(new { message = "Unauthorized" });
-
-            // only admins can update role
-            if (Account.Role != Role.Admin)
-                model.Role = null;
-
-            var account = _accountService.Update(id, model);
-            return Ok(account);
-        }
         [Authorize]
         [HttpPut("add-schedule/{id}")]
-        public ActionResult<AccountResponse> AddSchedule(int id, UpdateScheduleRequest schedule)
+        public ActionResult<AccountResponse> AddSchedule(string id, UpdateScheduleRequest schedule)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.AddSchedule(id, schedule);
@@ -234,10 +239,10 @@ public class UserFriendlyException: Exception
 
         [Authorize]
         [HttpPost("update-schedule/{id}")]
-        public ActionResult<AccountResponse> UpdateSchedule(int id, UpdateScheduleRequest schedule)
+        public ActionResult<AccountResponse> UpdateSchedule(string id, UpdateScheduleRequest schedule)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.UpdateSchedule(id, schedule);
@@ -246,10 +251,10 @@ public class UserFriendlyException: Exception
 
         [Authorize]
         [HttpPost("delete-schedule/{id}")]
-        public ActionResult<AccountResponse> DeleteSchedule(int id, UpdateScheduleRequest schedule)
+        public ActionResult<AccountResponse> DeleteSchedule(string id, UpdateScheduleRequest schedule)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.DeleteSchedule(id, schedule);
@@ -257,10 +262,10 @@ public class UserFriendlyException: Exception
         }
         [Authorize]
         [HttpPut("add-function/{id}")]
-        public ActionResult<AccountResponse> AddFunction(int id, UpdateUserFunctionRequest function)
+        public ActionResult<AccountResponse> AddFunction(string id, UpdateUserFunctionRequest function)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.AddFunction(id, function);
@@ -269,10 +274,10 @@ public class UserFriendlyException: Exception
 
         [Authorize]
         [HttpPost("delete-function/{id}")]
-        public ActionResult<AccountResponse> DeleteFunction(int id, UpdateUserFunctionRequest function)
+        public ActionResult<AccountResponse> DeleteFunction(string id, UpdateUserFunctionRequest function)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.DeleteFunction(id, function);
@@ -281,10 +286,10 @@ public class UserFriendlyException: Exception
 
         [Authorize]
         [HttpPost("move-schedule-to-pool/{id}")]
-        public ActionResult<AccountResponse> MoveSchedule2Pool(int id, UpdateScheduleRequest scheduleReq)
+        public ActionResult<AccountResponse> MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var pool = _accountService.MoveSchedule2Pool(id, scheduleReq);
@@ -293,24 +298,24 @@ public class UserFriendlyException: Exception
 
         [Authorize]
         [HttpPost("get-schedule-from-pool/{id}")]
-        public ActionResult<AccountResponse> GetScheduleFromPool(int id, UpdateScheduleRequest scheduleReq)
+        public ActionResult<AccountResponse> GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.GetScheduleFromPool(id, scheduleReq);
-            if(account == null)
+            if (account == null)
             {
-                return NotFound ();
+                return NotFound();
             }
-            
+
             return Ok(account);
         }
 
         [Authorize]
         [HttpGet("available_schedules/{id}")]
-        public ActionResult<SchedulePoolElementsResponse> GetAvailableSchedules(int id)
+        public ActionResult<SchedulePoolElementsResponse> GetAvailableSchedules(string id)
         {
             var dates = _accountService.GetAvailableSchedules(id);
             return Ok(dates);
@@ -334,11 +339,11 @@ public class UserFriendlyException: Exception
 
 
         [Authorize]
-        [HttpDelete("{id:int}")]
-        public IActionResult Delete(int id)
+        [HttpDelete("{id}")]
+        public IActionResult Delete(string id)
         {
             // users can delete their own account and admins can delete any account
-            if (id != Account.AccountId && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             _accountService.Delete(id);

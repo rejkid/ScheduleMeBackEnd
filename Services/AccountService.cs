@@ -29,6 +29,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using Spire.Xls;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity;
+using Google.Apis.Drive.v3.Data;
+using User = WebApi.Entities.User;
 
 namespace WebApi.Services
 {
@@ -37,35 +40,35 @@ namespace WebApi.Services
         AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         void RevokeToken(string token, string ipAddress);
-        void Register(RegisterRequest model, string origin);
+        Task<IdentityResult> Register(RegisterRequest model, string origin);
         void VerifyEmail(VerifyEmailRequest model);
         void ForgotPassword(ForgotPasswordRequest model, string origin);
         void ValidateResetToken(ValidateResetTokenRequest mode);
         void ResetPassword(ResetPasswordRequest model);
         IEnumerable<AccountResponse> GetAll();
-        AccountResponse GetById(int id);
+        AccountResponse GetById(string id);
 
         public ScheduleDateTimeResponse GetAllDates();
         public DateFunctionTeamResponse GetTeamsByFunctionForDate(string date);
 
-        AccountResponse Create(CreateRequest model);
-        AccountResponse Update(int id, UpdateRequest model);
-        public AccountResponse DeleteSchedule(int id, UpdateScheduleRequest scheduleReq);
+        Task<AccountResponse> Create(CreateRequest model);
+        Task<AccountResponse> Update(string id, UpdateRequest model);
+        public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
 
-        public AccountResponse AddSchedule(int id, UpdateScheduleRequest scheduleReq);
-        public AccountResponse UpdateSchedule(int id, UpdateScheduleRequest scheduleReq);
-        public AccountResponse DeleteFunction(int id, UpdateUserFunctionRequest functionReq);
-        public AccountResponse AddFunction(int id, UpdateUserFunctionRequest functionReq);
+        public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
+        public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
+        public AccountResponse DeleteFunction(string id, UpdateUserFunctionRequest functionReq);
+        public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq);
         //public SchedulePoolElementsResponse ChangeUserAvailability(int id, UpdateScheduleRequest scheduleReq);
-        public AccountResponse GetScheduleFromPool(int id, UpdateScheduleRequest scheduleReq);
-        public AccountResponse MoveSchedule2Pool(int id, UpdateScheduleRequest scheduleReq);
+        public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq);
+        public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq);
 
-        public SchedulePoolElementsResponse GetAvailableSchedules(int id);
+        public SchedulePoolElementsResponse GetAvailableSchedules(string id);
         public SchedulePoolElementsResponse GetAllAvailableSchedules();
 
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
 
-        void Delete(int id);
+        void Delete(string id);
         public string[] RoleConfiguration();
         public ActionResult<string> UploadAccounts(string path);
         public bool GetAutoEmail();
@@ -87,6 +90,9 @@ namespace WebApi.Services
         public static readonly object lockObject = new object();
         private readonly IHubContext<MessageHub, IMessageHubClient> _hubContext;
         private IConfiguration _configuration;
+        private readonly IUserStore<Account> _userStore;
+        private readonly IUserEmailStore<Account> _emailStore;
+        private readonly UserManager<Account> _userManager;
 
         public AccountService(
             DataContext context,
@@ -94,7 +100,9 @@ namespace WebApi.Services
             IOptions<AppSettings> appSettings,
             IEmailService emailService,
             IHubContext<MessageHub, IMessageHubClient> hubContext,
-            IConfiguration configuration
+            UserManager<Account> userManager,
+            IConfiguration configuration,
+            IUserStore<Account> userStore
             )
         {
             _context = context;
@@ -103,6 +111,10 @@ namespace WebApi.Services
             _emailService = emailService;
             _hubContext = hubContext;
             _configuration = configuration;
+
+            _userManager = userManager;
+            _userStore = userStore;
+            _emailStore = (IUserEmailStore<Account>)_userStore;
         }
 
         public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
@@ -244,7 +256,7 @@ namespace WebApi.Services
             }
         }
 
-        public void Register(RegisterRequest model, string origin)
+        async public Task<IdentityResult> Register(RegisterRequest model, string origin)
         {
             log.Info("Register before locking");
             Monitor.Enter(lockObject);
@@ -254,7 +266,9 @@ namespace WebApi.Services
                 try
                 {
                     // validate
-                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
+                    //Account account = _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob);
+                    Account user = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
+                    if (user != null)
                     {
                         var clientTimeZoneId = _appSettings.ClientTimeZoneId;
                         var scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(model.Dob, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
@@ -262,10 +276,46 @@ namespace WebApi.Services
 
                         // send already registered error in email to prevent account enumeration
                         sendAlreadyRegisteredEmail(model.Email, scheduleDate.ToString(ConstantsDefined.DateTimeFormat), origin);
+                        //var claims = new List<Claim>();
+                        //claims.Add(new Claim("DOB", account.DOB));
+                        //claims.Add(new Claim(ClaimTypes.Email, account.Email));
+                        //var id = new ClaimsIdentity(claims, DefaultAuthenticationTypes.ApplicationCookie);
+                        //var principal = new ClaimsPrincipal(new ClaimsIdentity(null, "Basic"));
+                        //var result = await _userManager.GetUserAsync(user, model.Password);
                         transaction.Commit();
-                        return;
+                        return IdentityResult.Success;
                     }
 
+                    
+                    //var user1 = Activator.CreateInstance<Account>();
+                
+                    // map model to new account object
+                    user = _mapper.Map<Account>(model);
+
+                    //await _userStore.SetUserNameAsync(user, model.Email.Split('@')[0], CancellationToken.None);
+                    //await _emailStore.SetEmailAsync(user, model.Email, CancellationToken.None);
+
+                    var isFirstAccount = _context.Accounts.Count() == 0;
+                    user.Role = isFirstAccount ? Role.Admin : Role.User;
+                    user.Created = DateTime.UtcNow;
+                    user.VerificationToken = randomTokenString();
+
+                    // hash password
+                    user.PasswordHash = BC.HashPassword(model.Password,12);
+
+                    var result = await _userManager.CreateAsync(user/*, model.Password*/);
+                    Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
+                    if (result.Succeeded)
+                    {
+                        // send email
+                        sendVerificationEmail(user, origin);
+                    }
+                    transaction.Commit();
+                    log.WarnFormat("Registration successful for = {0} ", model.Email);
+                    return result;
+                 
+
+                    /*
                     // map model to new account object
                     var account = _mapper.Map<Account>(model);
 
@@ -284,9 +334,12 @@ namespace WebApi.Services
 
                     // send email
                     sendVerificationEmail(account, origin);
+                    
 
                     transaction.Commit();
                     log.WarnFormat("Registration successful for = {0} ", model.Email);
+                    return IdentityResult.Success;
+                    */
                 }
                 catch (Exception ex)
                 {
@@ -299,6 +352,99 @@ namespace WebApi.Services
                 {
                     Monitor.Exit(lockObject);
                     log.Info("Register after locking");
+                }
+            }
+        }
+
+        async public Task<AccountResponse> Create(CreateRequest model)
+        {
+            log.Info("Create before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    // validate
+                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
+                        throw new AppException($"Email '{model.Email}' DOB: '{model.Dob}' is already registered");
+
+                    // map model to new account object
+                    var account = _mapper.Map<Account>(model);
+                    account.Created = DateTime.UtcNow;
+                    account.Verified = DateTime.UtcNow;
+
+                    // hash password
+                    account.PasswordHash = BC.HashPassword(model.Password);
+
+                    // save account
+                    //_context.Accounts.Add(account);
+                    //_context.SaveChanges();
+                    var result = await _userManager.CreateAsync(account);
+                    Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
+
+                    AccountResponse response = _mapper.Map<AccountResponse>(account);
+                    transaction.Commit();
+
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in Create:", ex);
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("Create after locking");
+                }
+            }
+        }
+
+        async public Task<AccountResponse> Update(string id, UpdateRequest model)
+        {
+            log.Info("Update before locking"); ;
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var account = getAccount(id);
+                    // validate
+                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
+                        throw new AppException($"Email '{model.Email}' is already taken");
+
+                    // hash password if it was entered
+                    if (!string.IsNullOrEmpty(model.Password))
+                        account.PasswordHash = BC.HashPassword(model.Password);
+
+                    _mapper.Map(model, account);
+
+                    account.Updated = DateTime.UtcNow;
+                    //_context.Accounts.Update(account);
+                    //_context.SaveChanges();
+                    var result = await _userManager.UpdateAsync(account);
+                    Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
+
+                    AccountResponse response = _mapper.Map<AccountResponse>(account);
+
+                    transaction.Commit();
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in Update:", ex);
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("Update after locking"); ;
                 }
             }
         }
@@ -575,8 +721,7 @@ namespace WebApi.Services
                                 response.DateFunctionTeams.Add(team);
                             }
 
-                            User user = new User();
-                            user = _mapper.Map<User>(account);
+                            User user = _mapper.Map<User>(account);
                             user.Function = schedule.UserFunction;
                             user.UserAvailability = schedule.UserAvailability;
                             user.ScheduleGroup = schedule.ScheduleGroup;
@@ -598,7 +743,7 @@ namespace WebApi.Services
                 log.Info("GetTeamsByFunctionForDate after locking");
             }
         }
-        public AccountResponse GetById(int id)
+        public AccountResponse GetById(string id)
         {
             log.Info("GetById before locking");
             Monitor.Enter(lockObject);
@@ -622,95 +767,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse Create(CreateRequest model)
-        {
-            log.Info("Create before locking");
-            Monitor.Enter(lockObject);
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    // validate
-                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
-                        throw new AppException($"Email '{model.Email}' DOB: '{model.Dob}' is already registered");
-
-                    // map model to new account object
-                    var account = _mapper.Map<Account>(model);
-                    account.Created = DateTime.UtcNow;
-                    account.Verified = DateTime.UtcNow;
-
-                    // hash password
-                    account.PasswordHash = BC.HashPassword(model.Password);
-
-                    // save account
-                    _context.Accounts.Add(account);
-                    _context.SaveChanges();
-
-                    AccountResponse response = _mapper.Map<AccountResponse>(account);
-                    transaction.Commit();
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in Create:", ex);
-                    throw;
-                }
-                finally
-                {
-                    Monitor.Exit(lockObject);
-                    log.Info("Create after locking");
-                }
-            }
-        }
-
-        public AccountResponse Update(int id, UpdateRequest model)
-        {
-            log.Info("Update before locking"); ;
-            Monitor.Enter(lockObject);
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    var account = getAccount(id);
-                    // validate
-                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
-                        throw new AppException($"Email '{model.Email}' is already taken");
-
-                    // hash password if it was entered
-                    if (!string.IsNullOrEmpty(model.Password))
-                        account.PasswordHash = BC.HashPassword(model.Password);
-
-                    _mapper.Map(model, account);
-
-                    account.Updated = DateTime.UtcNow;
-                    _context.Accounts.Update(account);
-                    _context.SaveChanges();
-
-                    AccountResponse response = _mapper.Map<AccountResponse>(account);
-
-                    transaction.Commit();
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in Update:", ex);
-                    throw;
-                }
-                finally
-                {
-                    Monitor.Exit(lockObject);
-                    log.Info("Update after locking"); ;
-                }
-            }
-        }
-        public AccountResponse DeleteSchedule(int id, UpdateScheduleRequest scheduleReq)
+        public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.InfoFormat("DeleteSchedule before locking");
             Monitor.Enter(lockObject);
@@ -766,7 +823,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse AddSchedule(int id, UpdateScheduleRequest scheduleReq)
+        public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("AddSchedule before locking");
             Monitor.Enter(lockObject);
@@ -804,7 +861,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse UpdateSchedule(int id, UpdateScheduleRequest scheduleReq)
+        public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("UpdateSchedule before locking");
             Monitor.Enter(lockObject);
@@ -852,7 +909,7 @@ namespace WebApi.Services
                 }
             }
         }
-        public AccountResponse DeleteFunction(int id, UpdateUserFunctionRequest functionReq)
+        public AccountResponse DeleteFunction(string id, UpdateUserFunctionRequest functionReq)
         {
             log.Info("DeleteFunction before locking");
             Monitor.Enter(lockObject);
@@ -899,7 +956,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse AddFunction(int id, UpdateUserFunctionRequest functionReq)
+        public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq)
         {
             log.Info("AddFunction before locking");
             Monitor.Enter(lockObject);
@@ -935,7 +992,7 @@ namespace WebApi.Services
         /*
         User functions
         */
-        public AccountResponse MoveSchedule2Pool(int id, UpdateScheduleRequest scheduleReq)
+        public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("MoveSchedule2Pool before locking");
             Monitor.Enter(lockObject);
@@ -1000,7 +1057,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse GetScheduleFromPool(int id, UpdateScheduleRequest scheduleReq)
+        public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq)
         {
 
             log.Info("GetScheduleFromPool before locking");
@@ -1077,7 +1134,7 @@ namespace WebApi.Services
             return response;
         }
 
-        public SchedulePoolElementsResponse GetAvailableSchedules(int id)
+        public SchedulePoolElementsResponse GetAvailableSchedules(string id)
         {
             SchedulePoolElementsResponse response = new SchedulePoolElementsResponse();
             log.Info("GetAvailableSchedules before locking");
@@ -1153,7 +1210,7 @@ namespace WebApi.Services
             }
             return null;
         }
-        public void Delete(int id)
+        public void Delete(string id)
         {
             log.Info("Delete before locking");
             Monitor.Enter(lockObject);
@@ -1459,12 +1516,12 @@ namespace WebApi.Services
         }
         // helper methods
 
-        private Account getAccount(int id)
+        private Account getAccount(string id)
         {
             Account account = null;
             var accountAll = _context.Accounts.Include(x => x.RefreshTokens).Include(x => x.Schedules).Include(x => x.UserFunctions)
                     .ToList();
-            account = accountAll.Find(x => x.AccountId == id);
+            account = accountAll.Find(x => x.Id == id);
             if (account == null)
             {
                 throw new KeyNotFoundException("Account not found");
@@ -1501,7 +1558,7 @@ namespace WebApi.Services
             var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[] { new Claim("id", account.AccountId.ToString()) }),
+                Subject = new ClaimsIdentity(new[] { new Claim("id", account.Id.ToString()) }),
                 Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };

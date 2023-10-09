@@ -1,3 +1,4 @@
+using log4net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +13,7 @@ namespace WebApi.Middleware
 {
     public class JwtMiddleware
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private readonly RequestDelegate _next;
         private readonly AppSettings _appSettings;
 
@@ -48,15 +50,19 @@ namespace WebApi.Middleware
                 }, out SecurityToken validatedToken);
 
                 var jwtToken = (JwtSecurityToken)validatedToken;
-                var accountId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                //var Id = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                string Id = jwtToken.Claims.First(x => x.Type == "id").Value;
 
-                // attach account to context on successful jwt validation
-                context.Items["Account"] = await dataContext.Accounts.FindAsync(accountId);
+                // Attach account to context on successful jwt validation
+                var account = await dataContext.Accounts.FindAsync(Id);
+                context.Items["Account"] = account;
             }
-            catch
+            catch (Exception error)
             {
                 // do nothing if jwt validation fails
                 // account is not attached to context so request won't have access to secure routes
+                Console.WriteLine("Failed:" + error);
+                //log.Warn("JWT (expired): for path: " + context.Request.Path);
             }
         }
     }

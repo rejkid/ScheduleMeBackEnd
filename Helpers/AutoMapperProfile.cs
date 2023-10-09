@@ -9,9 +9,9 @@ namespace WebApi.Helpers
         // mappings between model and entity objects
         public AutoMapperProfile()
         {
-            CreateMap<Account, User>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
-            
+            CreateMap<Account, User>();
+            //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
+
 
             //CreateMap<Schedule, SchedulePoolElement>()
             //    /*.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.ScheduleId))*/;
@@ -21,15 +21,17 @@ namespace WebApi.Helpers
 
 
 
-            CreateMap<Account, AccountResponse>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
+            CreateMap<Account, AccountResponse>();
+            //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
 
-            CreateMap<Account, AuthenticateResponse>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
+            CreateMap<Account, AuthenticateResponse>();
+                //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
 
-            CreateMap<RegisterRequest, Account>();
+            CreateMap<RegisterRequest, Account>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email));
 
-            CreateMap<CreateRequest, Account>();
+            CreateMap<CreateRequest, Account>()
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email));
 
             CreateMap<UpdateScheduleRequest, Schedule>();
 

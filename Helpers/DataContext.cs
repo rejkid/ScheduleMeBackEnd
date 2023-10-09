@@ -5,11 +5,11 @@ using System.Configuration;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using WebApi.Entities;
-
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace WebApi.Helpers
 {
-    public class DataContext : DbContext
+    public class DataContext : IdentityDbContext<Account>
     {
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public DbSet<SystemInfo> SystemInformation { get; set; }
@@ -25,10 +25,15 @@ namespace WebApi.Helpers
         private readonly IConfiguration Configuration;
 
 
-        public DataContext(IConfiguration configuration)
+        //public DataContext(IConfiguration configuration)
+        //{
+        //    Configuration = configuration;
+
+        //}
+
+        public DataContext(IConfiguration configuration, DbContextOptions options) : base(options)
         {
             Configuration = configuration;
-
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -38,6 +43,7 @@ namespace WebApi.Helpers
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
             //modelBuilder.Entity<Account>().HasMany(e => e.RefreshTokens).WithOne(e => e.Account).IsRequired();
             modelBuilder.Entity<SystemInfo>().HasData(
             new SystemInfo
