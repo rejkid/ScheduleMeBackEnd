@@ -11,10 +11,11 @@ namespace WebApi.Models.Accounts
         private string _confirmPassword;
         private string _role;
         private string _email;
-        
+
         public string Title { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
+        public string PhoneNumber { get; set; }
 
         [Required]
         public DateTime Dob { get; set; }
