@@ -52,7 +52,7 @@ namespace WebApi.Services
         public DateFunctionTeamResponse GetTeamsByFunctionForDate(string date);
 
         Task<AccountResponse> Create(CreateRequest model);
-        Task<AccountResponse> Update(string id, UpdateRequest model);
+        Task<AccountResponse> Update(string id, AccountRequest model);
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
@@ -403,7 +403,7 @@ namespace WebApi.Services
             }
         }
 
-        async public Task<AccountResponse> Update(string id, UpdateRequest model)
+        async public Task<AccountResponse> Update(string id, AccountRequest model)
         {
             log.Info("Update before locking"); ;
             Monitor.Enter(lockObject);

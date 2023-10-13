@@ -41,7 +41,7 @@ namespace WebApi.Helpers
             CreateMap<UpdateUserFunctionRequest, Function>();
 
             
-            CreateMap<UpdateRequest, Account>()
+            CreateMap<AccountRequest, Account>()
             // .ForMember(d => d.Role, 
             //     op => op.MapFrom(o=> MapGrade(o.Role)))
 

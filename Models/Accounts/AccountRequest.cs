@@ -5,7 +5,7 @@ using System;
 
 namespace WebApi.Models.Accounts
 {
-    public class UpdateRequest
+    public class AccountRequest
     {
         private string _password;
         private string _confirmPassword;

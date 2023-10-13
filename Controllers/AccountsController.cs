@@ -130,7 +130,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPut("{id}")]
-        public ActionResult<AccountResponse> Update(string id, UpdateRequest model)
+        public ActionResult<AccountResponse> Update(string id, AccountRequest model)
         {
             // users can update their own account and admins can update any account
             if (id != Account.Id && Account.Role != Role.Admin)
