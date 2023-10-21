@@ -10,6 +10,6 @@ namespace WebApi.Models.Accounts
         public string Email { get; set; }
 
         [Required]
-        public DateTime Dob { get; set; }
+        public string Dob { get; set; }
     }
 }

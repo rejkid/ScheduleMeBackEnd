@@ -359,7 +359,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPost("upload-accounts"), DisableRequestSizeLimit]
-        public ActionResult<string> UploadAccounts()
+        async public Task UploadAccounts()
         {
             try
             {
@@ -380,13 +380,14 @@ namespace WebApi.Controllers
                     {
                         file.CopyTo(stream);
                     }
-                    _accountService.UploadAccounts(fullPath);
+                    await _accountService.UploadAccounts(fullPath);
                 }
-                return Ok();
+                //return Ok();
             }
             catch (System.Exception ex)
             {
-                return BadRequest(ex.Message);
+                //return BadRequest(ex.Message);
+                throw;
             }
         }
 

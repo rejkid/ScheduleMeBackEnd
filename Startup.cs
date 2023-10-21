@@ -29,6 +29,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Identity;
 using WebApi.Entities;
+using Google;
 
 [assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
 namespace WebApi
@@ -112,6 +113,22 @@ namespace WebApi
             {
                 config.Filters.Add(typeof(WebApiActionFilter));
             });
+
+            // 
+            //services.AddIdentity<Account, IdentityRole>(options =>
+            //{
+            //    options.User.RequireUniqueEmail = false;
+
+            //})
+            //.AddEntityFrameworkStores<DataContext>()
+            //.AddDefaultTokenProviders();
+
+            //services.Configure<IdentityOptions>(options =>
+            //{
+            //    // Default User settings.
+            //    options.User.RequireUniqueEmail = false;
+
+            //});
 
             /* JD experiment start */
             //services.AddScoped<IUserClaimsPrincipalFactory<IdentityUser>,

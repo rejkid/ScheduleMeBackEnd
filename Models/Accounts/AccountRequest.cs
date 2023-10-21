@@ -11,14 +11,15 @@ namespace WebApi.Models.Accounts
         private string _confirmPassword;
         private string _role;
         private string _email;
+        private string _phoneNumber;
 
         public string Title { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string PhoneNumber { get; set; }
+        
 
         [Required]
-        public DateTime Dob { get; set; }
+        public string Dob { get; set; }
 
         public UpdateScheduleRequest[] Schedules { get; set; }
         public UpdateUserFunctionRequest[] UserFunctions { get; set; }
@@ -51,6 +52,11 @@ namespace WebApi.Models.Accounts
             set => _confirmPassword = replaceEmptyWithNull(value);
         }
 
+        public string PhoneNumber
+        {
+            get => _phoneNumber;
+            set => _phoneNumber = replaceEmptyWithNull(value);
+        }
         // helpers
 
         private string replaceEmptyWithNull(string value)

@@ -8,8 +8,8 @@ namespace WebApi.Models.Accounts
     public class UpdateScheduleRequest
     {
         [Required]
-        public DateTime Date { get; set; }
-        public DateTime NewDate { get; set; }
+        public string Date { get; set; }
+        public string NewDate { get; set; }
         [Required]
         public Boolean Required { get; set; }
         public Boolean UserAvailability { get; set; }

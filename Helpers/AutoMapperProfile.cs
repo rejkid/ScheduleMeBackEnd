@@ -1,4 +1,6 @@
 using AutoMapper;
+using log4net;
+using System;
 using WebApi.Entities;
 using WebApi.Models.Accounts;
 
@@ -6,6 +8,7 @@ namespace WebApi.Helpers
 {
     public class AutoMapperProfile : Profile
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         // mappings between model and entity objects
         public AutoMapperProfile()
         {
@@ -21,8 +24,8 @@ namespace WebApi.Helpers
 
 
 
-            CreateMap<Account, AccountResponse>();
-            //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
+            CreateMap<Account, AccountResponse>()
+            .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DOB.ToString(ConstantsDefined.DateTimeFormat)));
 
             CreateMap<Account, AuthenticateResponse>();
                 //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
@@ -31,9 +34,15 @@ namespace WebApi.Helpers
                 .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email));
 
             CreateMap<CreateRequest, Account>()
-                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email));
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email+ src.Dob.ToString().Replace('/', '_').Replace(':', '_').Replace(' ', '_')
+                ));
 
-            CreateMap<UpdateScheduleRequest, Schedule>();
+            CreateMap<UpdateScheduleRequest, Schedule>().
+                ForMember(dest => dest.Date, opt => 
+                {
+                    opt.MapFrom(src => DateTime.ParseExact(src.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture));
+                    log.Info("ForMember called") ;
+                }); 
 
             CreateMap<UpdateScheduleRequest, SchedulePoolElement>();
 
@@ -47,26 +56,21 @@ namespace WebApi.Helpers
 
             .ForMember(d => d.Schedules, op => op.Ignore())
             .ForMember(d => d.UserFunctions, op => op.Ignore())
-                .ForAllMembers(x => x.Condition(
-                    (src, dest, prop) =>
-                    {
-                        // ignore null & empty string properties
-                        if (prop == null) return false;
-                        if (prop.GetType() == typeof(string) && string.IsNullOrEmpty((string)prop)) return false;
+            .ForAllMembers(x => x.Condition(
+                (src, dest, propSrc, propDst, resolutionContext) =>
+                {
+                    // ignore null & empty string properties - with exception of PhoneNumber
+                    if (propSrc == null && x.DestinationMember.Name != "PhoneNumber") return false;
+                    if ((x.DestinationMember.Name != "PhoneNumber") && (propSrc.GetType() == typeof(string)) && string.IsNullOrEmpty((string)propSrc)) return false;
 
-                        // ignore null role
-                        if (x.DestinationMember.Name == "Role" && src.Role == null) return false;
+                    // ignore null role
+                    if (x.DestinationMember.Name == "Role" && src.Role == null) return false;
 
-                        return true;
-                    }
-                ));
-                
+                    return true;
+                }
+            ));
+
             //CreateMap<Account, UpdateRequest>();
-        }
-        public static Role MapGrade(string grade)
-        {
-            //TODO: function to map a string to a SchoolGradeDTO
-            return Role.Admin;
         }
     }
 }

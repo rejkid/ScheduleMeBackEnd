@@ -27,11 +27,17 @@ using System.Runtime.Serialization;
 using System.Security.Principal;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
-using Spire.Xls;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Google.Apis.Drive.v3.Data;
 using User = WebApi.Entities.User;
+using Aspose.Cells;
+using System.Linq.Expressions;
+using static Google.Apis.Requests.BatchRequest;
+using System.Data;
+using static log4net.Appender.RollingFileAppender;
+using Org.BouncyCastle.Ocsp;
+using Aspose.Cells.Timelines;
 
 namespace WebApi.Services
 {
@@ -70,7 +76,7 @@ namespace WebApi.Services
 
         void Delete(string id);
         public string[] RoleConfiguration();
-        public ActionResult<string> UploadAccounts(string path);
+        public Task UploadAccounts(string path);
         public bool GetAutoEmail();
         public bool SetAutoEmail(bool autoEmail);
         public void SendRemindingEmail4Functions();
@@ -125,7 +131,8 @@ namespace WebApi.Services
             {
                 try
                 {
-                    var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
+                    DateTime dob = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == dob);
 
                     if (account == null || !account.IsVerified || !BC.Verify(model.Password, account.PasswordHash))
                         throw new AppException("Email, DOB or password is incorrect");
@@ -267,11 +274,12 @@ namespace WebApi.Services
                 {
                     // validate
                     //Account account = _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob);
-                    Account user = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
+                    DateTime dob = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    Account user = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == dob);
                     if (user != null)
                     {
                         var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                        var scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(model.Dob, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+                        var scheduleDate = dob;// TimeZoneInfo.ConvertTimeFromUtc(model.Dob, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
 
 
                         // send already registered error in email to prevent account enumeration
@@ -366,7 +374,8 @@ namespace WebApi.Services
                 try
                 {
                     // validate
-                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
+                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == dateTime))
                         throw new AppException($"Email '{model.Email}' DOB: '{model.Dob}' is already registered");
 
                     // map model to new account object
@@ -414,7 +423,8 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
                     // validate
-                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
+                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == dateTime))
                         throw new AppException($"Email '{model.Email}' is already taken");
 
                     // hash password if it was entered
@@ -500,7 +510,8 @@ namespace WebApi.Services
             {
                 try
                 {
-                    var account = _context.Accounts.SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
+                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                    var account = _context.Accounts.SingleOrDefault(x => x.Email == model.Email && x.DOB == dateTime);
 
                     // always return ok response to prevent email enumeration
                     if (account == null)
@@ -752,7 +763,9 @@ namespace WebApi.Services
             {
                 var account = getAccount(id);
 
-                return _mapper.Map<AccountResponse>(account);
+                AccountResponse retVal = _mapper.Map<AccountResponse>(account);
+
+                return retVal;
             }
             catch (Exception ex)
             {
@@ -782,7 +795,8 @@ namespace WebApi.Services
 
                     foreach (var item in account.Schedules)
                     {
-                        if (DateTime.Compare(item.Date, scheduleReq.Date) == 0 && item.UserFunction == scheduleReq.UserFunction)
+                        DateTime dateTime = DateTime.ParseExact(scheduleReq.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                        if (DateTime.Compare(item.Date, dateTime) == 0 && item.UserFunction == scheduleReq.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -876,7 +890,8 @@ namespace WebApi.Services
                     {
                         if (schedule.Date.CompareTo(scheduleReq.Date) == 0 && schedule.UserFunction == scheduleReq.UserFunction)
                         {
-                            schedule.Date = scheduleReq.NewDate;
+                            DateTime dateTime = DateTime.ParseExact(scheduleReq.NewDate, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                            schedule.Date = dateTime;
                             schedule.UserFunction = scheduleReq.NewUserFunction;
 
                             // Reset notification flags
@@ -1010,7 +1025,8 @@ namespace WebApi.Services
 
                     foreach (var item in account.Schedules)
                     {
-                        if (DateTime.Compare(item.Date, scheduleReq.Date) == 0 && item.UserFunction == scheduleReq.UserFunction)
+                        DateTime dateTime = DateTime.ParseExact(scheduleReq.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                        if (DateTime.Compare(item.Date, dateTime) == 0 && item.UserFunction == scheduleReq.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -1271,13 +1287,205 @@ namespace WebApi.Services
                 }
             }
         }
-        public ActionResult<string> UploadAccounts(string path)
+        async public Task UploadAccounts(string path)
+        {
+            log.Info("UploadAccounts before locking");
+            Monitor.Enter(lockObject);
+
+            try
+            {
+                var accounts = _context.Accounts;
+                foreach (var account in accounts)
+                {
+                    if (account.Role != Role.Admin)
+                    {
+                        Delete(account.Id);
+                    }
+                }
+                await PopulateUsers(path);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                throw;
+            }
+            finally
+            {
+                Monitor.Exit(lockObject);
+                log.Info("UploadAccounts after locking");
+            }
+        }
+
+        private async Task PopulateUsers(string path)
         {
             //Creates workbook
-            Workbook workbook = new Workbook();
-            workbook.LoadFromFile(path);
+            Workbook workbook = new Workbook(path);
 
-            return "OK";
+            //Gets first worksheet
+            Worksheet worksheet = workbook.Worksheets[0];
+
+            // Print worksheet name
+            Console.WriteLine("Worksheet: " + worksheet.Name);
+
+            // Get number of rows and columns
+            int rows = worksheet.Cells.MaxDataRow;
+            int cols = worksheet.Cells.MaxDataColumn;
+
+            UpdateUserFunctionRequest functionRequest = new UpdateUserFunctionRequest();
+            List<UpdateScheduleRequest> scheduleRequests = new List<UpdateScheduleRequest>();
+            CreateRequest request = new CreateRequest();
+
+            log.Info("UploadAccounts before locking");
+            Monitor.Enter(lockObject);
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    // Loop through rows
+                    for (int row = 0; row <= rows; row++)
+                    {
+                        // Create request
+                        CreateUser(worksheet, cols, row, request, functionRequest, scheduleRequests);
+                        // Schedule and functions have been red in
+                        request.Role = Role.User.ToString();
+                        request.Password = "Password@100";
+
+                        DateTime dateTime = DateTime.ParseExact(request.Dob, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                        Account account = _context.Accounts.SingleOrDefault(x => x.Email == request.Email && x.DOB == dateTime);
+                        // Validate
+                        if (account == null)
+                        {
+                            // Account does not exist yet - create one
+                            // map model to new account object
+                            account = _mapper.Map<Account>(request);
+                            account.Created = DateTime.UtcNow;
+                            account.Verified = DateTime.UtcNow;
+
+                            // hash password
+                            account.PasswordHash = BC.HashPassword(request.Password);
+
+                            account.UserFunctions = new List<Function>();
+                            account.Schedules = new List<Schedule>();
+                            var result = await _userManager.CreateAsync(account);
+                            Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
+                        }
+
+                        // Initialize function request - one function per row
+                        var newFunction = _mapper.Map<Function>(functionRequest);
+                        account.UserFunctions.Add(newFunction);
+                        _context.Accounts.Update(account);
+
+                        // Initialize schedules - multiple schedules per row
+                        foreach (var item in scheduleRequests)
+                        {
+                            var newSchedule = _mapper.Map<Schedule>(item);
+                            account.Schedules.Add(newSchedule);
+                            _context.Accounts.Update(account);
+                        }
+                        scheduleRequests.Clear();
+                    }
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in Create:", ex);
+                    throw;
+                }
+                finally
+                {
+                    Monitor.Exit(lockObject);
+                    log.Info("Create after locking");
+                }
+            }
+        }
+
+        private void CreateUser(Worksheet worksheet, int noOfCols, int row, 
+            CreateRequest request, UpdateUserFunctionRequest functionRequest,
+            List<UpdateScheduleRequest> scheduleRequests)
+        {
+            // Loop through each column in selected row
+            string group = string.Empty;
+            for (int col = 0; col <= noOfCols; col++)
+            {
+                switch (col)
+                {
+                    case 0:
+                        request.Title = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 1:
+                        request.FirstName = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 2:
+                        request.LastName = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 3:
+                        request.Email = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 4:
+                        request.PhoneNumber = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 5:
+                        {
+                            request.Dob = (string)worksheet.Cells[row, col].Value;
+                            //var clientTimeZoneId = _appSettings.ClientTimeZoneId;
+                            //request.Dob = TimeZoneInfo.ConvertTimeToUtc((DateTime)worksheet.Cells[row, col].Value, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+
+                            //request.Dob = TimeZoneInfo.ConvertTimeToUtc((DateTime)worksheet.Cells[row, col].Value);
+
+                            /* JD Test */
+                            //TimeZoneInfo timeZone = TimeZoneInfo.Local;
+                            //DateTime time = request.Dob;
+                            //DateTime convertedTime = time;
+                            //TimeSpan offset;
+                            //if (time.Kind == DateTimeKind.Local && !timeZone.Equals(TimeZoneInfo.Local))
+                            //    convertedTime = TimeZoneInfo.ConvertTime(time, TimeZoneInfo.Local, timeZone);
+                            //else if (time.Kind == DateTimeKind.Utc && !timeZone.Equals(TimeZoneInfo.Utc))
+                            //    convertedTime = TimeZoneInfo.ConvertTime(time, TimeZoneInfo.Utc, timeZone);
+                            //offset = timeZone.GetUtcOffset(time);
+                        }
+                        break;
+                    case 6:
+                        request.Password = (string)worksheet.Cells[row, col].Value;
+                        request.ConfirmPassword = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 7:
+                        {
+                            string function = ((string)worksheet.Cells[row, col].Value);
+                            //UpdateUserFunctionRequest req = new UpdateUserFunctionRequest();
+                            //req.UserFunction = function;
+                            functionRequest.UserFunction = function;
+                        }
+                        break;
+                    case 8:
+                        group = (string)worksheet.Cells[row, col].Value;
+                        break;
+                    case 9:
+                        {
+                            if (worksheet.Cells[row, col].Value != null)
+                            {
+                                string[] schedules = ((string)worksheet.Cells[row, col].Value).Split(',');
+                                foreach (var dateStr in schedules)
+                                {
+                                    UpdateScheduleRequest req = new UpdateScheduleRequest();
+                                    //var dateTime = DateTime.Parse(dateStr);
+                                    req.Date = dateStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
+                                    req.UserFunction = functionRequest.UserFunction;
+                                    req.ScheduleGroup = group;
+                                    scheduleRequests.Add(req);
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        // code block
+                        break;
+                }
+            }
         }
 
         /* Private helper functions */
@@ -1288,7 +1496,8 @@ namespace WebApi.Services
             foreach (var elem in schedulePoolAll)
             {
                 // 
-                if (item.Date == elem.Date && /* account.Email == elem.Email && */ item.UserFunction == elem.UserFunction)
+                DateTime dateTime = DateTime.ParseExact(item.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                if (dateTime == elem.Date && /* account.Email == elem.Email && */ item.UserFunction == elem.UserFunction)
                 {
                     poolElement = elem;
                     break;
@@ -1397,7 +1606,7 @@ namespace WebApi.Services
 
                             if ((scheduleDate - now) < WEEK_TIMEOUT && a.NotifyWeekBefore == true && s.NotifiedWeekBefore == false)
                             {
-                                string message = $@"This is a weekly reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
+                                string message = $@"This is a weekly reminder that <row>{a.FirstName} {a.LastName}</row> is scheduled to attend their duties.";
                                 string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
                                 _emailService.Send(
                                     to: a.Email,
@@ -1409,7 +1618,7 @@ namespace WebApi.Services
                             }
                             if ((scheduleDate - now) < THREE_DAYS_TIMEOUT && a.NotifyThreeDaysBefore == true && s.NotifiedThreeDaysBefore == false)
                             {
-                                string message = $@"This is a three-day reminder that <i>{a.FirstName} {a.LastName}</i> is scheduled to attend their duties.";
+                                string message = $@"This is a three-day reminder that <row>{a.FirstName} {a.LastName}</row> is scheduled to attend their duties.";
                                 string subject = $@"Reminder: {a.FirstName} {a.LastName} is {s.UserFunction} on {scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
                                 _emailService.Send(
                                     to: a.Email,
@@ -1489,7 +1698,7 @@ namespace WebApi.Services
 
                 if (account.Role == Role.Admin)
                 {
-                    string message = $@"<i>{a.FirstName} {a.LastName}</i> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
+                    string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
                     string subject = $@"Warning Administrator: {account.FirstName} {account.LastName}, {schedule.UserFunction}" + " is needed";
                     _emailService.Send(
                         to: account.Email,
@@ -1502,7 +1711,7 @@ namespace WebApi.Services
                 {
                     if (f.UserFunction == schedule.UserFunction || f.UserFunction == schedule.UserFunction) // TODO second or to be removed
                     {
-                        string message = $@"<i>{a.FirstName} {a.LastName}</i> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
+                        string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
                         string subject = $@"{account.FirstName} {account.LastName}, {f.UserFunction}" + " is needed";
                         _emailService.Send(
                             to: account.Email,
