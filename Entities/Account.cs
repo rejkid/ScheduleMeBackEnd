@@ -9,8 +9,8 @@ namespace WebApi.Entities
         public string Title { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        //public string Email { get; set; }
-        //public string PasswordHash { get; set; }
+        /* Email and passwordHash ... are in IdentityUser  */
+        
         public bool AcceptTerms { get; set; }
         public Role Role { get; set; }
         public string VerificationToken { get; set; }
