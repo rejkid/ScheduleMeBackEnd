@@ -12,6 +12,7 @@ using WebApi.Entities;
 using WebApi.Helpers;
 using WebApi.Models.Accounts;
 using WebApi.Services;
+using static Google.Apis.Requests.BatchRequest;
 
 namespace WebApi.Controllers
 {
@@ -51,32 +52,46 @@ namespace WebApi.Controllers
         [HttpPost("authenticate")]
         public ActionResult<AuthenticateResponse> Authenticate(AuthenticateRequest model)
         {
-            log.InfoFormat("Authenticating user {0} password {1} DOB {2} for ipaddress: {3}",
-                model.Email,
-                model.Password,
-                model.Dob,
-                ipAddress());
-            var response = _accountService.Authenticate(model, ipAddress());
-            setTokenCookie(response.RefreshToken);
+            try
+            {
+                log.InfoFormat("Authenticating user {0} password {1} DOB {2} for ipaddress: {3}",
+                    model.Email,
+                    model.Password,
+                    model.Dob,
+                    ipAddress());
+                var response = _accountService.Authenticate(model, ipAddress());
+                setTokenCookie(response.RefreshToken);
 
-            log.InfoFormat("Setting cookie - response.RefreshToken= {0} for E-mail: {1}",
-                response.RefreshToken,
-                model.Email);
+                log.InfoFormat("Setting cookie - response.RefreshToken= {0} for E-mail: {1}",
+                    response.RefreshToken,
+                    model.Email);
 
-            return Ok(response);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
 
         [HttpPost("refresh-token")]
         public ActionResult<AuthenticateResponse> RefreshToken()
         {
-            var refreshToken = Request.Cookies["refreshToken"];
+            try
+            {
+                var refreshToken = Request.Cookies["refreshToken"];
 
-            Console.WriteLine("refreshToken is:" + refreshToken);
-            var response = _accountService.RefreshToken(refreshToken, ipAddress());
-            setTokenCookie(response.RefreshToken);
+                Console.WriteLine("refreshToken is:" + refreshToken);
+                var response = _accountService.RefreshToken(refreshToken, ipAddress());
+                setTokenCookie(response.RefreshToken);
 
-            return Ok(response);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [Authorize]

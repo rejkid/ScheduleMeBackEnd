@@ -11,7 +11,7 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20231009052157_InitialCreate")]
+    [Migration("20231023020536_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -465,14 +465,16 @@ namespace WebApi.Migrations
                 {
                     b.HasOne("WebApi.Entities.Account", null)
                         .WithMany("UserFunctions")
-                        .HasForeignKey("AccountId");
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.ClientCascade);
                 });
 
             modelBuilder.Entity("WebApi.Entities.RefreshToken", b =>
                 {
                     b.HasOne("WebApi.Entities.Account", "Account")
                         .WithMany("RefreshTokens")
-                        .HasForeignKey("AccountId");
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.ClientCascade);
 
                     b.Navigation("Account");
                 });
@@ -481,7 +483,8 @@ namespace WebApi.Migrations
                 {
                     b.HasOne("WebApi.Entities.Account", null)
                         .WithMany("Schedules")
-                        .HasForeignKey("AccountId");
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.ClientCascade);
                 });
 
             modelBuilder.Entity("WebApi.Entities.Account", b =>

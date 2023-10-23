@@ -52,6 +52,18 @@ namespace WebApi.Helpers
                 NoOfEmailsSentDayily = 1,
                 autoEmail = true
             });
+            modelBuilder.Entity<Account>()
+                .HasMany<Schedule>(a => a.Schedules)
+                .WithOne()
+                .OnDelete(DeleteBehavior.ClientCascade);
+            modelBuilder.Entity<Account>()
+                .HasMany<Function>(a => a.UserFunctions)
+                .WithOne()
+                .OnDelete(DeleteBehavior.ClientCascade);
+            modelBuilder.Entity<Account>()
+                .HasMany<RefreshToken>(a => a.RefreshTokens)
+                .WithOne(r=> r.Account)
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
     }
 }

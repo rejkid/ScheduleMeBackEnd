@@ -215,11 +215,11 @@ namespace WebApi.Services
                     transaction.Commit();
                     return response;
                 }
-                catch (Exception ex)
+                catch 
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in RefreshToken:", ex);
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in RefreshToken:");
                     throw;
                 }
                 finally
@@ -1051,7 +1051,7 @@ namespace WebApi.Services
                     }
                     else
                     {
-                        log.WarnFormat("Schedule did not exist in the schdule list for {0}. Date {1} function {2}",
+                        log.WarnFormat("Schedule did not exist in the schdule schedules for {0}. Date {1} function {2}",
                             account.FirstName, scheduleReq.Date, scheduleReq.UserFunction);
                         throw new AppException("The schedule has been already removed");
                     }
@@ -1236,11 +1236,6 @@ namespace WebApi.Services
                 try
                 {
                     var account = getAccount(id);
-
-                    // Remove children
-                    account.Schedules.Clear();
-                    account.UserFunctions.Clear();
-                    account.RefreshTokens.Clear();
 
                     _context.Accounts.Remove(account);
                     _context.SaveChanges();
@@ -1466,19 +1461,19 @@ namespace WebApi.Services
                         break;
                     case 9:
                         {
-                            if (worksheet.Cells[row, col].Value != null)
-                            {
-                                string[] schedules = ((string)worksheet.Cells[row, col].Value).Split(',');
-                                foreach (var dateStr in schedules)
-                                {
-                                    UpdateScheduleRequest req = new UpdateScheduleRequest();
-                                    //var dateTime = DateTime.Parse(dateStr);
-                                    req.Date = dateStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
-                                    req.UserFunction = functionRequest.UserFunction;
-                                    req.ScheduleGroup = group;
-                                    scheduleRequests.Add(req);
-                                }
-                            }
+                            //if (worksheet.Cells[row, col].Value != null)
+                            //{
+                            //    string[] schedules = ((string)worksheet.Cells[row, col].Value).Split(',');
+                            //    foreach (var dateStr in schedules)
+                            //    {
+                            //        UpdateScheduleRequest req = new UpdateScheduleRequest();
+                            //        //var dateTime = DateTime.Parse(dateStr);
+                            //        req.Date = dateStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
+                            //        req.UserFunction = functionRequest.UserFunction;
+                            //        req.ScheduleGroup = group;
+                            //        scheduleRequests.Add(req);
+                            //    }
+                            //}
                         }
                         break;
                     default:
@@ -1745,11 +1740,13 @@ namespace WebApi.Services
             //var account = _context.Accounts.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
             if (account == null)
             {
-                Console.WriteLine("Exception thrown");
-                throw new AppException("Invalid token");
+                throw new AppException("Account null for token:"+ token);
             }
             var refreshToken = account.RefreshTokens.Single(x => x.Token == token);
-            if (!refreshToken.IsActive) throw new AppException("Invalid token");
+            if (!refreshToken.IsActive)
+            {
+                throw new AppException("Account found but token is not active:"+ token);
+            }
             return (refreshToken, account);
         }
 
