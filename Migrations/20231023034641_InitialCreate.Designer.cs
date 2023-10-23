@@ -11,7 +11,7 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20231023020536_InitialCreate")]
+    [Migration("20231023034641_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -406,7 +406,7 @@ namespace WebApi.Migrations
                         {
                             Id = 1,
                             NoOfEmailsSentDayily = 1u,
-                            autoEmail = true
+                            autoEmail = false
                         });
                 });
 

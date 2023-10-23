@@ -277,7 +277,7 @@ namespace WebApi.Migrations
             migrationBuilder.InsertData(
                 table: "SystemInformation",
                 columns: new[] { "Id", "NoOfEmailsSentDayily", "autoEmail" },
-                values: new object[] { 1, 1u, true });
+                values: new object[] { 1, 1u, false });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",

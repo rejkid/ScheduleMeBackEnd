@@ -403,7 +403,7 @@ namespace WebApi.Migrations
                         {
                             Id = 1,
                             NoOfEmailsSentDayily = 1u,
-                            autoEmail = true
+                            autoEmail = false
                         });
                 });
 

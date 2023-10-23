@@ -50,7 +50,7 @@ namespace WebApi.Helpers
             {
                 Id = 1,
                 NoOfEmailsSentDayily = 1,
-                autoEmail = true
+                autoEmail = false
             });
             modelBuilder.Entity<Account>()
                 .HasMany<Schedule>(a => a.Schedules)
