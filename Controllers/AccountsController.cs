@@ -118,13 +118,13 @@ namespace WebApi.Controllers
         public IActionResult Register(RegisterRequest model)
         {
             var result = _accountService.Register(model, Request.Headers["origin"]);
-            if (result.Result.Succeeded)
+            if (result.Succeeded)
             {
                 return Ok(new { message = "Registration successful, please check your email for verification instructions" });
             }
             else
             {
-                return BadRequest(result.Result.ToString());
+                return BadRequest(result.ToString());
             }
         }
         [Authorize(Role.Admin)]
@@ -133,8 +133,8 @@ namespace WebApi.Controllers
         {
             try
             {
-                Task<AccountResponse> response = _accountService.Create(model);
-                return Ok(response.Result);
+                AccountResponse response = _accountService.Create(model);
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -156,7 +156,7 @@ namespace WebApi.Controllers
                 model.Role = null;
 
             var response = _accountService.Update(id, model);
-            return Ok(response.Result);
+            return Ok(response);
         }
 
         [HttpPost("verify-email")]
@@ -374,13 +374,13 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPost("upload-accounts"), DisableRequestSizeLimit]
-        async public Task UploadAccounts()
+        public ActionResult UploadAccounts()
         {
             try
             {
                 var file = Request.Form.Files[0];
                 string folderName = "Upload";
-                string webRootPath = _hostingEnvironment.WebRootPath;
+                string webRootPath = _hostingEnvironment.ContentRootPath;
                 string newPath = Path.Combine(webRootPath, folderName);
                 if (!Directory.Exists(newPath))
                 {
@@ -395,17 +395,30 @@ namespace WebApi.Controllers
                     {
                         file.CopyTo(stream);
                     }
-                    await _accountService.UploadAccounts(fullPath);
+                    _accountService.UploadAccounts(fullPath);
                 }
-                //return Ok();
+                return Ok();
             }
             catch (System.Exception ex)
             {
-                //return BadRequest(ex.Message);
-                throw;
+                return BadRequest(ex.Message);
             }
         }
 
+        [Authorize]
+        [HttpDelete("delete-all-user-accounts")]
+        public ActionResult<IEnumerable<AccountResponse>> DeleteAllUserAccounts()
+        {
+            try
+            {
+                var accounts = _accountService.DeleteAllUserAccounts();
+                return Ok(accounts);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
         [Authorize]
         [HttpGet("auto-email")]
         public ActionResult<Boolean> GetAutoEmail()

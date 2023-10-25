@@ -38,6 +38,8 @@ using System.Data;
 using static log4net.Appender.RollingFileAppender;
 using Org.BouncyCastle.Ocsp;
 using Aspose.Cells.Timelines;
+using System.Collections;
+//using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebApi.Services
 {
@@ -46,7 +48,7 @@ namespace WebApi.Services
         AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         void RevokeToken(string token, string ipAddress);
-        Task<IdentityResult> Register(RegisterRequest model, string origin);
+        IdentityResult Register(RegisterRequest model, string origin);
         void VerifyEmail(VerifyEmailRequest model);
         void ForgotPassword(ForgotPasswordRequest model, string origin);
         void ValidateResetToken(ValidateResetTokenRequest mode);
@@ -57,8 +59,8 @@ namespace WebApi.Services
         public ScheduleDateTimeResponse GetAllDates();
         public DateFunctionTeamResponse GetTeamsByFunctionForDate(string date);
 
-        Task<AccountResponse> Create(CreateRequest model);
-        Task<AccountResponse> Update(string id, AccountRequest model);
+        AccountResponse Create(CreateRequest model);
+        AccountResponse Update(string id, AccountRequest model);
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
@@ -76,7 +78,9 @@ namespace WebApi.Services
 
         void Delete(string id);
         public string[] RoleConfiguration();
-        public Task UploadAccounts(string path);
+        public void UploadAccounts(string path);
+
+        public IEnumerable<AccountResponse> DeleteAllUserAccounts();
         public bool GetAutoEmail();
         public bool SetAutoEmail(bool autoEmail);
         public void SendRemindingEmail4Functions();
@@ -263,7 +267,7 @@ namespace WebApi.Services
             }
         }
 
-        async public Task<IdentityResult> Register(RegisterRequest model, string origin)
+        public IdentityResult Register(RegisterRequest model, string origin)
         {
             log.Info("Register before locking");
             Monitor.Enter(lockObject);
@@ -311,7 +315,7 @@ namespace WebApi.Services
                     // hash password
                     user.PasswordHash = BC.HashPassword(model.Password,12);
 
-                    var result = await _userManager.CreateAsync(user/*, model.Password*/);
+                    var result = _userManager.CreateAsync(user).GetAwaiter().GetResult();
                     Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
                     if (result.Succeeded)
                     {
@@ -364,7 +368,7 @@ namespace WebApi.Services
             }
         }
 
-        async public Task<AccountResponse> Create(CreateRequest model)
+        public AccountResponse Create(CreateRequest model)
         {
             log.Info("Create before locking");
             Monitor.Enter(lockObject);
@@ -389,7 +393,7 @@ namespace WebApi.Services
                     // save account
                     //_context.Accounts.Add(account);
                     //_context.SaveChanges();
-                    var result = await _userManager.CreateAsync(account);
+                    var result = _userManager.CreateAsync(account).GetAwaiter().GetResult();
                     Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
 
                     AccountResponse response = _mapper.Map<AccountResponse>(account);
@@ -412,7 +416,7 @@ namespace WebApi.Services
             }
         }
 
-        async public Task<AccountResponse> Update(string id, AccountRequest model)
+        public AccountResponse Update(string id, AccountRequest model)
         {
             log.Info("Update before locking"); ;
             Monitor.Enter(lockObject);
@@ -436,7 +440,7 @@ namespace WebApi.Services
                     account.Updated = DateTime.UtcNow;
                     //_context.Accounts.Update(account);
                     //_context.SaveChanges();
-                    var result = await _userManager.UpdateAsync(account);
+                    var result = _userManager.UpdateAsync(account).GetAwaiter().GetResult();
                     Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
 
                     AccountResponse response = _mapper.Map<AccountResponse>(account);
@@ -936,7 +940,7 @@ namespace WebApi.Services
                     var account = getAccount(id);
 
                     Function toRemove = null;
-                    // Purge all schedules & UserFunctions  - we don't know which were changed
+                    // Purge all functions & UserFunctions  - we don't know which were changed
                     foreach (var item in account.UserFunctions)
                     {
                         if (item.UserFunction == functionReq.UserFunction)
@@ -1051,7 +1055,7 @@ namespace WebApi.Services
                     }
                     else
                     {
-                        log.WarnFormat("Schedule did not exist in the schdule schedules for {0}. Date {1} function {2}",
+                        log.WarnFormat("Schedule did not exist in the schdule functions for {0}. Date {1} function {2}",
                             account.FirstName, scheduleReq.Date, scheduleReq.UserFunction);
                         throw new AppException("The schedule has been already removed");
                     }
@@ -1090,7 +1094,7 @@ namespace WebApi.Services
 
                     if (poolElement != null)
                     {
-                        // Schedule not found in the current schedules - create one
+                        // Schedule not found in the current functions - create one
                         Schedule schedule = new Schedule();
                         schedule.Date = poolElement.Date;
                         schedule.UserFunction = poolElement.UserFunction;
@@ -1282,9 +1286,34 @@ namespace WebApi.Services
                 }
             }
         }
-        async public Task UploadAccounts(string path)
+        public void UploadAccounts(string path)
         {
-            log.Info("UploadAccounts before locking");
+            try
+            {
+                var accounts = _context.Accounts;
+                foreach (var account in accounts)
+                {
+                    if (account.Role != Role.Admin)
+                    {
+                        Delete(account.Id);
+                    }
+                }
+                PopulateUsers(path);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                throw;
+            }
+            finally
+            {
+                log.Info("UploadAccounts after locking");
+            }
+        }
+        public IEnumerable<AccountResponse> DeleteAllUserAccounts()
+        {
+            log.Info("DeleteAllUserAccounts before locking");
             Monitor.Enter(lockObject);
 
             try
@@ -1297,22 +1326,23 @@ namespace WebApi.Services
                         Delete(account.Id);
                     }
                 }
-                await PopulateUsers(path);
+                accounts = _context.Accounts;
+                return _mapper.Map<IList<AccountResponse>>(accounts);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllUserAccounts:", ex);
                 throw;
             }
             finally
             {
                 Monitor.Exit(lockObject);
-                log.Info("UploadAccounts after locking");
+                log.Info("DeleteAllUserAccounts after locking");
             }
         }
 
-        private async Task PopulateUsers(string path)
+        private void PopulateUsers(string path)
         {
             //Creates workbook
             Workbook workbook = new Workbook(path);
@@ -1327,9 +1357,10 @@ namespace WebApi.Services
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
 
-            UpdateUserFunctionRequest functionRequest = new UpdateUserFunctionRequest();
+            List <UpdateUserFunctionRequest> functionRequests = new List<UpdateUserFunctionRequest>();
             List<UpdateScheduleRequest> scheduleRequests = new List<UpdateScheduleRequest>();
             CreateRequest request = new CreateRequest();
+            StringBuilder group = new StringBuilder();
 
             log.Info("UploadAccounts before locking");
             Monitor.Enter(lockObject);
@@ -1342,7 +1373,7 @@ namespace WebApi.Services
                     for (int row = 0; row <= rows; row++)
                     {
                         // Create request
-                        CreateUser(worksheet, cols, row, request, functionRequest, scheduleRequests);
+                        CreateUser(worksheet, cols, row, request, functionRequests, group);
                         // Schedule and functions have been red in
                         request.Role = Role.User.ToString();
                         request.Password = "Password@100";
@@ -1357,22 +1388,30 @@ namespace WebApi.Services
                             account = _mapper.Map<Account>(request);
                             account.Created = DateTime.UtcNow;
                             account.Verified = DateTime.UtcNow;
+                            account.ScheduleGroup = group.ToString();
 
                             // hash password
                             account.PasswordHash = BC.HashPassword(request.Password);
 
-                            account.UserFunctions = new List<Function>();
+                            account.UserFunctions = new List<Entities.Function>();
                             account.Schedules = new List<Schedule>();
-                            var result = await _userManager.CreateAsync(account);
+                            var result = _userManager.CreateAsync(account).GetAwaiter().GetResult();
                             Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
                         }
+                        group.Clear();
 
-                        // Initialize function request - one function per row
-                        var newFunction = _mapper.Map<Function>(functionRequest);
-                        account.UserFunctions.Add(newFunction);
-                        _context.Accounts.Update(account);
+                        // Initialize function request - multiple function per row
+                        foreach (var item in functionRequests)
+                        {
+                            var newFunction = _mapper.Map<Entities.Function>(item);
+                            var userFunction = account.UserFunctions.SingleOrDefault(x => x.UserFunction == item.UserFunction);
+                            if (userFunction == null)
+                                account.UserFunctions.Add(newFunction);
+                            _context.Accounts.Update(account);
+                        }
+                        functionRequests.Clear();
 
-                        // Initialize schedules - multiple schedules per row
+                        // Initialize functions - multiple functions per row
                         foreach (var item in scheduleRequests)
                         {
                             var newSchedule = _mapper.Map<Schedule>(item);
@@ -1382,6 +1421,8 @@ namespace WebApi.Services
                         scheduleRequests.Clear();
                     }
                     _context.SaveChanges();
+                    //Thread.Sleep(1000*60);
+                    Task.Delay(1000*60).GetAwaiter().GetResult();
                     transaction.Commit();
                 }
                 catch (Exception ex)
@@ -1399,34 +1440,54 @@ namespace WebApi.Services
             }
         }
 
-        private void CreateUser(Worksheet worksheet, int noOfCols, int row, 
-            CreateRequest request, UpdateUserFunctionRequest functionRequest,
-            List<UpdateScheduleRequest> scheduleRequests)
+        private void CreateUser(Worksheet worksheet, int noOfCols, int row,
+            CreateRequest request, List<UpdateUserFunctionRequest> functionRequests,
+            StringBuilder group)
         {
+
             // Loop through each column in selected row
-            string group = string.Empty;
+            //string group = string.Empty;
             for (int col = 0; col <= noOfCols; col++)
             {
                 switch (col)
                 {
                     case 0:
-                        request.Title = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.Title = (string)worksheet.Cells[row, col].Value;
+                            request.Title = (request.Title == null) ? string.Empty : request.Title.Trim();
+                        }
                         break;
                     case 1:
-                        request.FirstName = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.FirstName = (string)worksheet.Cells[row, col].Value;
+                            request.FirstName = (request.FirstName == null) ? string.Empty : request.FirstName.Trim();
+                        }
                         break;
                     case 2:
-                        request.LastName = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.LastName = (string)worksheet.Cells[row, col].Value;
+                            request.LastName = (request.LastName == null) ? string.Empty : request.LastName.Trim();
+                        }
                         break;
                     case 3:
-                        request.Email = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.Email = (string)worksheet.Cells[row, col].Value;
+                            request.Email = (request.Email == null) ? string.Empty : request.Email.Trim();
+                        }
                         break;
                     case 4:
-                        request.PhoneNumber = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.PhoneNumber = (string)worksheet.Cells[row, col].Value;
+                            request.PhoneNumber = (request.PhoneNumber == null) ? string.Empty : request.PhoneNumber.Trim();
+                        }
                         break;
                     case 5:
                         {
-                            request.Dob = (string)worksheet.Cells[row, col].Value;
+                            DateTime dob = (DateTime)worksheet.Cells[row, col].Value;
+                            request.Dob = dob.ToString(ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+
+
+                            // = dob.ToShortDateString();
                             //var clientTimeZoneId = _appSettings.ClientTimeZoneId;
                             //request.Dob = TimeZoneInfo.ConvertTimeToUtc((DateTime)worksheet.Cells[row, col].Value, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
 
@@ -1445,33 +1506,51 @@ namespace WebApi.Services
                         }
                         break;
                     case 6:
-                        request.Password = (string)worksheet.Cells[row, col].Value;
-                        request.ConfirmPassword = (string)worksheet.Cells[row, col].Value;
+                        {
+                            request.Password = (string)worksheet.Cells[row, col].Value;
+                            request.Password = (request.Password == null) ? string.Empty : request.Password.Trim();
+
+                            request.ConfirmPassword = (string)worksheet.Cells[row, col].Value;
+                            request.ConfirmPassword = (request.ConfirmPassword == null) ? string.Empty : request.ConfirmPassword.Trim();
+                        }
                         break;
                     case 7:
                         {
-                            string function = ((string)worksheet.Cells[row, col].Value);
-                            //UpdateUserFunctionRequest req = new UpdateUserFunctionRequest();
-                            //req.UserFunction = function;
-                            functionRequest.UserFunction = function;
+                            // Add functions to the user
+                            var functionsStr = (string)worksheet.Cells[row, col].Value;
+                            functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
+                            string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(',');
+                            foreach (var functionStr in functions)
+                            {
+                                UpdateUserFunctionRequest req = new UpdateUserFunctionRequest
+                                {
+                                    UserFunction = functionStr.Trim(),
+                                };
+                                functionRequests.Add(req);
+                            }
                         }
                         break;
                     case 8:
-                        group = (string)worksheet.Cells[row, col].Value;
+                        {
+                            var localGroup = (string)worksheet.Cells[row, col].Value;
+                            localGroup = (localGroup == null) ? string.Empty : localGroup.Trim();
+                        }
                         break;
+
                     case 9:
                         {
+                            // We done support schedule dates as we are going to generate them
                             //if (worksheet.Cells[row, col].Value != null)
                             //{
-                            //    string[] schedules = ((string)worksheet.Cells[row, col].Value).Split(',');
-                            //    foreach (var dateStr in schedules)
+                            //    string[] functions = ((string)worksheet.Cells[row, col].Value).Split(',');
+                            //    foreach (var functionStr in functions)
                             //    {
                             //        UpdateScheduleRequest req = new UpdateScheduleRequest();
-                            //        //var dateTime = DateTime.Parse(dateStr);
-                            //        req.Date = dateStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
-                            //        req.UserFunction = functionRequest.UserFunction;
+                            //        //var dateTime = DateTime.Parse(functionStr);
+                            //        req.Date = functionStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
+                            //        req.UserFunction = functionRequests.UserFunction;
                             //        req.ScheduleGroup = group;
-                            //        scheduleRequests.Add(req);
+                            //        
                             //    }
                             //}
                         }
