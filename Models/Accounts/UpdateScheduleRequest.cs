@@ -7,6 +7,7 @@ namespace WebApi.Models.Accounts
 {
     public class UpdateScheduleRequest
     {
+        public string AccountId { get; set; }
         [Required]
         public string Date { get; set; }
         public string NewDate { get; set; }

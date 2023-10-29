@@ -39,6 +39,7 @@ using static log4net.Appender.RollingFileAppender;
 using Org.BouncyCastle.Ocsp;
 using Aspose.Cells.Timelines;
 using System.Collections;
+using System.Xml;
 //using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebApi.Services
@@ -84,7 +85,7 @@ namespace WebApi.Services
         public bool GetAutoEmail();
         public bool SetAutoEmail(bool autoEmail);
         public void SendRemindingEmail4Functions();
-
+        public void GenerateSchedules(SchedulesCreateRequest request);
     }
 
     public class AccountService : IAccountService
@@ -97,7 +98,7 @@ namespace WebApi.Services
         private readonly IMapper _mapper;
         private readonly AppSettings _appSettings;
         private readonly IEmailService _emailService;
-        public static readonly object lockObject = new object();
+        public static readonly SemaphoreSlim semaphoreObject = new SemaphoreSlim(1, 1);
         private readonly IHubContext<MessageHub, IMessageHubClient> _hubContext;
         private IConfiguration _configuration;
         private readonly IUserStore<Account> _userStore;
@@ -130,7 +131,7 @@ namespace WebApi.Services
         public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
         {
             log.Info("Authenticate before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
@@ -170,7 +171,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Authenticate after locking");
                 }
             }
@@ -179,7 +180,7 @@ namespace WebApi.Services
         public AuthenticateResponse RefreshToken(string token, string ipAddress)
         {
             log.Info("RefreshToken before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -228,7 +229,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("RefreshToken after locking");
                 }
             }
@@ -237,7 +238,7 @@ namespace WebApi.Services
         public void RevokeToken(string token, string ipAddress)
         {
             log.Info("RevokeToken before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -261,7 +262,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("RevokeToken after locking");
                 }
             }
@@ -270,7 +271,7 @@ namespace WebApi.Services
         public IdentityResult Register(RegisterRequest model, string origin)
         {
             log.Info("Register before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -362,7 +363,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Register after locking");
                 }
             }
@@ -371,7 +372,7 @@ namespace WebApi.Services
         public AccountResponse Create(CreateRequest model)
         {
             log.Info("Create before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -410,7 +411,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Create after locking");
                 }
             }
@@ -419,7 +420,7 @@ namespace WebApi.Services
         public AccountResponse Update(string id, AccountRequest model)
         {
             log.Info("Update before locking"); ;
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -457,7 +458,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Update after locking"); ;
                 }
             }
@@ -466,7 +467,7 @@ namespace WebApi.Services
         public void VerifyEmail(VerifyEmailRequest model)
         {
             log.Info("VerifyEmail before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -499,7 +500,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("VerifyEmail after locking");
                 }
             }
@@ -508,7 +509,7 @@ namespace WebApi.Services
         public void ForgotPassword(ForgotPasswordRequest model, string origin)
         {
             log.Info("ForgotPassword before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -544,7 +545,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("ForgotPassword after locking");
                 }
             }
@@ -553,7 +554,7 @@ namespace WebApi.Services
         public void ValidateResetToken(ValidateResetTokenRequest model)
         {
             log.Info("ValidateResetToken before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             try
             {
                 // Convert model.Dob string to DateTime
@@ -576,7 +577,7 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("ValidateResetToken after locking");
             }
         }
@@ -584,7 +585,7 @@ namespace WebApi.Services
         public void ResetPassword(ResetPasswordRequest model)
         {
             log.Info("ResetPassword before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -617,7 +618,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("ResetPassword after locking");
                 }
             }
@@ -626,11 +627,11 @@ namespace WebApi.Services
         public IEnumerable<AccountResponse> GetAll()
         {
             log.Info("GetAll before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             try
             {
-                var accounts = _context.Accounts;
+                var accounts = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).OrderBy(a => a.LastName).ToList();
                 return _mapper.Map<IList<AccountResponse>>(accounts);
             }
             catch (Exception ex)
@@ -641,7 +642,7 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetAll after locking");
             }
         }
@@ -649,7 +650,7 @@ namespace WebApi.Services
         public ScheduleDateTimeResponse GetAllDates()
         {
             log.Info("GetAllDates before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             try
             {
                 ScheduleDateTimeResponse response = new ScheduleDateTimeResponse();
@@ -688,7 +689,7 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetAllDates after locking");
             }
         }
@@ -696,7 +697,7 @@ namespace WebApi.Services
         public DateFunctionTeamResponse GetTeamsByFunctionForDate(string dateStr)
         {
             log.Info("GetTeamsByFunctionForDate before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             try
             {
@@ -754,14 +755,14 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetTeamsByFunctionForDate after locking");
             }
         }
         public AccountResponse GetById(string id)
         {
             log.Info("GetById before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             try
             {
@@ -779,7 +780,7 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetById after locking");
             }
         }
@@ -787,7 +788,7 @@ namespace WebApi.Services
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.InfoFormat("DeleteSchedule before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -835,7 +836,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     Console.WriteLine("DeleteSchedule after locking");
                 }
             }
@@ -844,7 +845,7 @@ namespace WebApi.Services
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("AddSchedule before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -873,7 +874,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("AddSchedule after locking");
                 }
             }
@@ -882,7 +883,7 @@ namespace WebApi.Services
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("UpdateSchedule before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -923,7 +924,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("UpdateSchedule after locking");
                 }
             }
@@ -931,7 +932,7 @@ namespace WebApi.Services
         public AccountResponse DeleteFunction(string id, UpdateUserFunctionRequest functionReq)
         {
             log.Info("DeleteFunction before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -969,7 +970,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("DeleteFunction after locking"); ;
                 }
             }
@@ -978,7 +979,7 @@ namespace WebApi.Services
         public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq)
         {
             log.Info("AddFunction before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
@@ -1002,7 +1003,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("AddFunction after locking");
                 }
             }
@@ -1013,10 +1014,11 @@ namespace WebApi.Services
         */
         public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq)
         {
-            log.Info("MoveSchedule2Pool before locking");
-            Monitor.Enter(lockObject);
-
             var autoEmail = GetAutoEmail();
+
+            log.Info("MoveSchedule2Pool before locking");
+            semaphoreObject.Wait();
+
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
@@ -1071,7 +1073,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("MoveSchedule2Pool after locking");
                 }
             }
@@ -1081,7 +1083,7 @@ namespace WebApi.Services
         {
 
             log.Info("GetScheduleFromPool before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
@@ -1131,7 +1133,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("GetScheduleFromPool after locking");
                 }
             }
@@ -1140,14 +1142,14 @@ namespace WebApi.Services
         {
             SchedulePoolElementsResponse response = new SchedulePoolElementsResponse();
             log.Info("GetAllAvailableSchedules before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             try
             {
                 response.SchedulePoolElements = _context.SchedulePoolElements.ToList();
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetAllAvailableSchedules after locking");
             }
 
@@ -1158,7 +1160,7 @@ namespace WebApi.Services
         {
             SchedulePoolElementsResponse response = new SchedulePoolElementsResponse();
             log.Info("GetAvailableSchedules before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
             try
             {
                 var account = getAccount(id);
@@ -1179,7 +1181,7 @@ namespace WebApi.Services
             }
             finally
             {
-                Monitor.Exit(lockObject);
+                semaphoreObject.Release();
                 log.Info("GetAvailableSchedules after locking");
             }
             return response;
@@ -1187,7 +1189,7 @@ namespace WebApi.Services
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction)
         {
             log.Info("GetScheduleFromPool before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1224,7 +1226,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("GetScheduleFromPool after locking");
                 }
             }
@@ -1233,7 +1235,7 @@ namespace WebApi.Services
         public void Delete(string id)
         {
             log.Info("Delete before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1253,7 +1255,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Delete after locking");
                 }
             }
@@ -1262,7 +1264,7 @@ namespace WebApi.Services
         public string[] RoleConfiguration()
         {
             log.Info("RoleConfiguration before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1281,7 +1283,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("RoleConfiguration after locking");
                 }
             }
@@ -1314,34 +1316,71 @@ namespace WebApi.Services
         public IEnumerable<AccountResponse> DeleteAllUserAccounts()
         {
             log.Info("DeleteAllUserAccounts before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
-            try
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
-                var accounts = _context.Accounts;
-                foreach (var account in accounts)
+                try
                 {
-                    if (account.Role != Role.Admin)
-                    {
-                        Delete(account.Id);
-                    }
+                    var foundAccounts = _context.Accounts.Include(x => x.RefreshTokens).Include(x => x.Schedules).Include(x => x.UserFunctions).Where(x => x.Role != Role.Admin).ToArray().ToList();
+                    _context.Accounts.RemoveRange(foundAccounts);
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+
+                    var accounts = _context.Accounts;
+                    return _mapper.Map<IList<AccountResponse>>(accounts);
                 }
-                accounts = _context.Accounts;
-                return _mapper.Map<IList<AccountResponse>>(accounts);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllUserAccounts:", ex);
-                throw;
-            }
-            finally
-            {
-                Monitor.Exit(lockObject);
-                log.Info("DeleteAllUserAccounts after locking");
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in Delete:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("Delete after locking");
+                }
             }
         }
+         
+        public void GenerateSchedules(SchedulesCreateRequest request)
+        {
+            log.Info("GenerateSchedules before locking");
+            semaphoreObject.Wait();
 
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var allAccounts = _context.Accounts.Include(x => x.Schedules).ToArray();
+                    foreach (var scheduleRequest in request.Schedules)
+                    {
+                        var account = _context.Accounts.SingleOrDefault(a => a.Id == scheduleRequest.AccountId);
+                        Schedule s = _mapper.Map<Schedule>(scheduleRequest);
+                        account.Schedules.Add(s);
+                    }
+
+                    Thread.Sleep(1000*30);
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in Delete:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GenerateSchedules after locking");
+                }
+            }
+        }
         private void PopulateUsers(string path)
         {
             //Creates workbook
@@ -1363,7 +1402,7 @@ namespace WebApi.Services
             StringBuilder group = new StringBuilder();
 
             log.Info("UploadAccounts before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1421,9 +1460,8 @@ namespace WebApi.Services
                         scheduleRequests.Clear();
                     }
                     _context.SaveChanges();
-                    //Thread.Sleep(1000*60);
-                    Task.Delay(1000*60).GetAwaiter().GetResult();
                     transaction.Commit();
+                    //Thread.Sleep(1000 * 30);
                 }
                 catch (Exception ex)
                 {
@@ -1434,7 +1472,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("Create after locking");
                 }
             }
@@ -1485,24 +1523,6 @@ namespace WebApi.Services
                         {
                             DateTime dob = (DateTime)worksheet.Cells[row, col].Value;
                             request.Dob = dob.ToString(ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-
-
-                            // = dob.ToShortDateString();
-                            //var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                            //request.Dob = TimeZoneInfo.ConvertTimeToUtc((DateTime)worksheet.Cells[row, col].Value, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
-                            //request.Dob = TimeZoneInfo.ConvertTimeToUtc((DateTime)worksheet.Cells[row, col].Value);
-
-                            /* JD Test */
-                            //TimeZoneInfo timeZone = TimeZoneInfo.Local;
-                            //DateTime time = request.Dob;
-                            //DateTime convertedTime = time;
-                            //TimeSpan offset;
-                            //if (time.Kind == DateTimeKind.Local && !timeZone.Equals(TimeZoneInfo.Local))
-                            //    convertedTime = TimeZoneInfo.ConvertTime(time, TimeZoneInfo.Local, timeZone);
-                            //else if (time.Kind == DateTimeKind.Utc && !timeZone.Equals(TimeZoneInfo.Utc))
-                            //    convertedTime = TimeZoneInfo.ConvertTime(time, TimeZoneInfo.Utc, timeZone);
-                            //offset = timeZone.GetUtcOffset(time);
                         }
                         break;
                     case 6:
@@ -1532,14 +1552,16 @@ namespace WebApi.Services
                         break;
                     case 8:
                         {
+                            group.Clear();
                             var localGroup = (string)worksheet.Cells[row, col].Value;
                             localGroup = (localGroup == null) ? string.Empty : localGroup.Trim();
+                            group.Append(localGroup);
                         }
                         break;
 
                     case 9:
                         {
-                            // We done support schedule dates as we are going to generate them
+                            // We don't support schedule dates as we are going to generate them
                             //if (worksheet.Cells[row, col].Value != null)
                             //{
                             //    string[] functions = ((string)worksheet.Cells[row, col].Value).Split(',');
@@ -1591,7 +1613,7 @@ namespace WebApi.Services
         public Boolean GetAutoEmail()
         {
             log.Info("GetAutoEmail before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1612,7 +1634,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("GetAutoEmail after locking");
                 }
             }
@@ -1621,7 +1643,7 @@ namespace WebApi.Services
         public Boolean SetAutoEmail(Boolean autoEmail)
         {
             log.Info("SetAutoEmail before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1642,7 +1664,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("SetAutoEmail after locking");
                 }
             }
@@ -1651,7 +1673,7 @@ namespace WebApi.Services
         public void SendRemindingEmail4Functions()
         {
             log.Info("SendRemindingEmail4Functions before locking");
-            Monitor.Enter(lockObject);
+            semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -1747,7 +1769,7 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    Monitor.Exit(lockObject);
+                    semaphoreObject.Release();
                     log.Info("SendRemindingEmail4Functions after locking");
                 }
             }

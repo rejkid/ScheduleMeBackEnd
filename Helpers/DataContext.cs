@@ -62,7 +62,7 @@ namespace WebApi.Helpers
                 .OnDelete(DeleteBehavior.ClientCascade);
             modelBuilder.Entity<Account>()
                 .HasMany<RefreshToken>(a => a.RefreshTokens)
-                .WithOne(r=> r.Account)
+                .WithOne(r => r.Account)
                 .OnDelete(DeleteBehavior.ClientCascade);
         }
     }

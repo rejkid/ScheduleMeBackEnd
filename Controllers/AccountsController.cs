@@ -419,6 +419,20 @@ namespace WebApi.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        //[Authorize]
+        [HttpPost("generate-schedules")]
+        public ActionResult GenerateSchedules(SchedulesCreateRequest request)
+        {
+            try
+            {
+                _accountService.GenerateSchedules(request);
+                return Ok(new { message = "Schedules Generated successfully" });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
         [Authorize]
         [HttpGet("auto-email")]
         public ActionResult<Boolean> GetAutoEmail()
