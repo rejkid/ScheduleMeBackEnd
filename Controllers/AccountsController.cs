@@ -244,12 +244,19 @@ namespace WebApi.Controllers
         [HttpPut("add-schedule/{id}")]
         public ActionResult<AccountResponse> AddSchedule(string id, UpdateScheduleRequest schedule)
         {
-            // users can update their own account and admins can update any account
-            if (id != Account.Id && Account.Role != Role.Admin)
-                return Unauthorized(new { message = "Unauthorized" });
+            try
+            {
+                // users can update their own account and admins can update any account
+                if (id != Account.Id && Account.Role != Role.Admin)
+                    return Unauthorized(new { message = "Unauthorized" });
 
-            var account = _accountService.AddSchedule(id, schedule);
-            return Ok(account);
+                var account = _accountService.AddSchedule(id, schedule);
+                return Ok(account);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [Authorize]
@@ -413,20 +420,6 @@ namespace WebApi.Controllers
             {
                 var accounts = _accountService.DeleteAllUserAccounts();
                 return Ok(accounts);
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-        //[Authorize]
-        [HttpPost("generate-schedules")]
-        public ActionResult GenerateSchedules(SchedulesCreateRequest request)
-        {
-            try
-            {
-                _accountService.GenerateSchedules(request);
-                return Ok(new { message = "Schedules Generated successfully" });
             }
             catch (System.Exception ex)
             {

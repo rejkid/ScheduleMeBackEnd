@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WebApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class CreateInitial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -73,7 +73,7 @@ namespace WebApi.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Email = table.Column<string>(type: "TEXT", nullable: true),
-                    Date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Date = table.Column<string>(type: "TEXT", nullable: true),
                     Required = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserAvailability = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
@@ -235,8 +235,10 @@ namespace WebApi.Migrations
                 {
                     ScheduleId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Date = table.Column<string>(type: "TEXT", nullable: true),
+                    Dob = table.Column<string>(type: "TEXT", nullable: true),
                     Required = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Email = table.Column<string>(type: "TEXT", nullable: true),
                     UserAvailability = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
                     ScheduleGroup = table.Column<string>(type: "TEXT", nullable: true),

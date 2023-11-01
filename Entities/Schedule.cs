@@ -5,8 +5,10 @@ namespace WebApi.Entities
     public class Schedule
     {
         public int ScheduleId { get; set; }
-        public DateTime Date { get; set; }
+        public string Date { get; set; }
+        public string Dob { get; set; }
         public Boolean Required { get; set; }
+        public string Email { get; set; }
         public Boolean UserAvailability { get; set; }
         public string UserFunction { get; set; }
         // Notification section

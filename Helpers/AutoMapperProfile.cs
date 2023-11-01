@@ -22,8 +22,6 @@ namespace WebApi.Helpers
             // CreateMap<Schedule, SchedulePoolElement>();
             // CreateMap<SchedulePoolElement, Schedule>();
 
-
-
             CreateMap<Account, AccountResponse>()
             .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DOB.ToString(ConstantsDefined.DateTimeFormat)));
 
@@ -37,12 +35,12 @@ namespace WebApi.Helpers
                 .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email+ src.Dob.ToString().Replace('/', '_').Replace(':', '_').Replace(' ', '_')
                 ));
 
-            CreateMap<UpdateScheduleRequest, Schedule>().
-                ForMember(dest => dest.Date, opt => 
-                {
-                    opt.MapFrom(src => DateTime.ParseExact(src.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture));
-                    log.Info("ForMember called") ;
-                }); 
+            CreateMap<UpdateScheduleRequest, Schedule>();
+            //.ForMember(dest => dest.Date, opt =>
+            //{
+            //    opt.MapFrom(src => DateTime.ParseExact(src.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture));
+            //    log.Info("ForMember called");
+            //});
 
             CreateMap<UpdateScheduleRequest, SchedulePoolElement>();
 
@@ -73,4 +71,5 @@ namespace WebApi.Helpers
             //CreateMap<Account, UpdateRequest>();
         }
     }
+   
 }

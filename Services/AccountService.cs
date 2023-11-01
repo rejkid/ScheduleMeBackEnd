@@ -40,6 +40,7 @@ using Org.BouncyCastle.Ocsp;
 using Aspose.Cells.Timelines;
 using System.Collections;
 using System.Xml;
+using Org.BouncyCastle.Asn1.Ocsp;
 //using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebApi.Services
@@ -85,7 +86,6 @@ namespace WebApi.Services
         public bool GetAutoEmail();
         public bool SetAutoEmail(bool autoEmail);
         public void SendRemindingEmail4Functions();
-        public void GenerateSchedules(SchedulesCreateRequest request);
     }
 
     public class AccountService : IAccountService
@@ -702,7 +702,7 @@ namespace WebApi.Services
             try
             {
                 var accountAll = _context.Accounts.Include(x => x.Schedules).ToList();
-                var dateTime = DateTime.Parse(dateStr);
+                var dateTime = dateStr;
 
                 var offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
 
@@ -800,8 +800,8 @@ namespace WebApi.Services
 
                     foreach (var item in account.Schedules)
                     {
-                        DateTime dateTime = DateTime.ParseExact(scheduleReq.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-                        if (DateTime.Compare(item.Date, dateTime) == 0 && item.UserFunction == scheduleReq.UserFunction)
+                        string dateTime = scheduleReq.Date;
+                        if ((item.Date == dateTime) && item.UserFunction == scheduleReq.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -854,6 +854,13 @@ namespace WebApi.Services
                     var account = getAccount(id);
                     var newSchedule = new Schedule();
                     newSchedule = _mapper.Map<Schedule>(scheduleReq);
+                    var collection = account.Schedules.FindAll(s => s.Date == scheduleReq.Date 
+                                    && s.UserFunction == scheduleReq.UserFunction
+                                    && s.Dob == scheduleReq.Dob);
+                    if(collection.Count > 0)
+                    {
+                        throw new AppException("Schedule already is defined for this account");
+                    }
                     account.Schedules.Add(newSchedule);
                     _context.Accounts.Update(account);
                     _context.SaveChanges();
@@ -895,7 +902,7 @@ namespace WebApi.Services
                     {
                         if (schedule.Date.CompareTo(scheduleReq.Date) == 0 && schedule.UserFunction == scheduleReq.UserFunction)
                         {
-                            DateTime dateTime = DateTime.ParseExact(scheduleReq.NewDate, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                            string dateTime = scheduleReq.NewDate;
                             schedule.Date = dateTime;
                             schedule.UserFunction = scheduleReq.NewUserFunction;
 
@@ -1031,8 +1038,8 @@ namespace WebApi.Services
 
                     foreach (var item in account.Schedules)
                     {
-                        DateTime dateTime = DateTime.ParseExact(scheduleReq.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-                        if (DateTime.Compare(item.Date, dateTime) == 0 && item.UserFunction == scheduleReq.UserFunction)
+                        string dateTime = scheduleReq.Date;
+                        if ((item.Date == dateTime) && item.UserFunction == scheduleReq.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -1346,41 +1353,6 @@ namespace WebApi.Services
             }
         }
          
-        public void GenerateSchedules(SchedulesCreateRequest request)
-        {
-            log.Info("GenerateSchedules before locking");
-            semaphoreObject.Wait();
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    var allAccounts = _context.Accounts.Include(x => x.Schedules).ToArray();
-                    foreach (var scheduleRequest in request.Schedules)
-                    {
-                        var account = _context.Accounts.SingleOrDefault(a => a.Id == scheduleRequest.AccountId);
-                        Schedule s = _mapper.Map<Schedule>(scheduleRequest);
-                        account.Schedules.Add(s);
-                    }
-
-                    Thread.Sleep(1000*30);
-                    _context.SaveChanges();
-                    transaction.Commit();
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in Delete:", ex);
-                    throw;
-                }
-                finally
-                {
-                    semaphoreObject.Release();
-                    log.Info("GenerateSchedules after locking");
-                }
-            }
-        }
         private void PopulateUsers(string path)
         {
             //Creates workbook
@@ -1592,7 +1564,7 @@ namespace WebApi.Services
             foreach (var elem in schedulePoolAll)
             {
                 // 
-                DateTime dateTime = DateTime.ParseExact(item.Date, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                string dateTime = item.Date;
                 if (dateTime == elem.Date && /* account.Email == elem.Email && */ item.UserFunction == elem.UserFunction)
                 {
                     poolElement = elem;
@@ -1688,10 +1660,10 @@ namespace WebApi.Services
                         foreach (var s in a.Schedules)
                         {
                             string clientTimeZoneId = _configuration["AppSettings:ClientTimeZoneId"];
-                            DateTime scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(s.Date, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+                            DateTime scheduleDate = DateTime.Parse(s.Date);
 
-                            DateTime dt = DateTime.UtcNow;
-                            DateTime now = TimeZoneInfo.ConvertTimeFromUtc(dt/*DateTime.Now*/, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+                            DateTime dt = DateTime.Now;
+                            DateTime now = dt;
                             log.DebugFormat("scheduleDate {0} now {1}",
                                 scheduleDate,
                                 now);
@@ -1790,11 +1762,11 @@ namespace WebApi.Services
             foreach (var account in accountAll)
             {
                 var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                var scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(schedule.Date, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
+                var scheduleDate = schedule.Date;
 
                 if (account.Role == Role.Admin)
                 {
-                    string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
+                    string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate;
                     string subject = $@"Warning Administrator: {account.FirstName} {account.LastName}, {schedule.UserFunction}" + " is needed";
                     _emailService.Send(
                         to: account.Email,
@@ -1807,7 +1779,7 @@ namespace WebApi.Services
                 {
                     if (f.UserFunction == schedule.UserFunction || f.UserFunction == schedule.UserFunction) // TODO second or to be removed
                     {
-                        string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate.ToString(ConstantsDefined.DateTimeFormat);
+                        string message = $@"<row>{a.FirstName} {a.LastName}</row> is unable to attend their duties on " + scheduleDate;
                         string subject = $@"{account.FirstName} {account.LastName}, {f.UserFunction}" + " is needed";
                         _emailService.Send(
                             to: account.Email,
