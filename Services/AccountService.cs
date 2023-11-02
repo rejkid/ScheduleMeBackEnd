@@ -136,8 +136,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    DateTime dob = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
-                    var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == dob);
+                    var account = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
 
                     if (account == null || !account.IsVerified || !BC.Verify(model.Password, account.PasswordHash))
                         throw new AppException("Email, DOB or password is incorrect");
@@ -278,17 +277,11 @@ namespace WebApi.Services
                 try
                 {
                     // validate
-                    //Account account = _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob);
-                    DateTime dob = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
-                    Account user = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == dob);
+                    Account user = _context.Accounts.Include(x => x.RefreshTokens).SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
                     if (user != null)
                     {
-                        var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                        var scheduleDate = dob;// TimeZoneInfo.ConvertTimeFromUtc(model.Dob, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
-
                         // send already registered error in email to prevent account enumeration
-                        sendAlreadyRegisteredEmail(model.Email, scheduleDate.ToString(ConstantsDefined.DateTimeFormat), origin);
+                        sendAlreadyRegisteredEmail(model.Email, model.Dob, origin);
                         //var claims = new List<Claim>();
                         //claims.Add(new Claim("DOB", account.DOB));
                         //claims.Add(new Claim(ClaimTypes.Email, account.Email));
@@ -379,8 +372,7 @@ namespace WebApi.Services
                 try
                 {
                     // validate
-                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
-                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == dateTime))
+                    if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
                         throw new AppException($"Email '{model.Email}' DOB: '{model.Dob}' is already registered");
 
                     // map model to new account object
@@ -428,8 +420,7 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
                     // validate
-                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
-                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == dateTime))
+                    if (account.Email != model.Email && _context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
                         throw new AppException($"Email '{model.Email}' is already taken");
 
                     // hash password if it was entered
@@ -473,14 +464,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    // Convert DOB string to DateTime
-                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-
-                    // Convert client DOB to server date time
-                    var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                    DateTime dob = TimeZoneInfo.ConvertTimeToUtc(dateTime, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
-                    var account = _context.Accounts.SingleOrDefault(x => x.VerificationToken == model.Token && (DateTime.Compare(x.DOB, dob) == 0));
+                    var account = _context.Accounts.SingleOrDefault(x => x.VerificationToken == model.Token && x.DOB == model.Dob);
 
                     if (account == null) throw new AppException("Verification failed");
 
@@ -515,8 +499,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
-                    var account = _context.Accounts.SingleOrDefault(x => x.Email == model.Email && x.DOB == dateTime);
+                    var account = _context.Accounts.SingleOrDefault(x => x.Email == model.Email && x.DOB == model.Dob);
 
                     // always return ok response to prevent email enumeration
                     if (account == null)
@@ -557,14 +540,7 @@ namespace WebApi.Services
             semaphoreObject.Wait();
             try
             {
-                // Convert model.Dob string to DateTime
-                DateTime dateTime = DateTime.ParseExact(model.Dob, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-
-                // Convert client DOB to server date time
-                var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-                DateTime dob = TimeZoneInfo.ConvertTimeToUtc(dateTime, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
-                var account = _context.Accounts.SingleOrDefault(x => x.ResetToken == model.Token && (DateTime.Compare(x.DOB, dob) == 0) && x.ResetTokenExpires > DateTime.UtcNow);
+                var account = _context.Accounts.SingleOrDefault(x => x.ResetToken == model.Token && x.DOB == model.Dob && x.ResetTokenExpires > DateTime.UtcNow);
 
                 if (account == null)
                     throw new AppException("Invalid token");
@@ -1389,8 +1365,7 @@ namespace WebApi.Services
                         request.Role = Role.User.ToString();
                         request.Password = "Password@100";
 
-                        DateTime dateTime = DateTime.ParseExact(request.Dob, ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
-                        Account account = _context.Accounts.SingleOrDefault(x => x.Email == request.Email && x.DOB == dateTime);
+                        Account account = _context.Accounts.SingleOrDefault(x => x.Email == request.Email && x.DOB == request.Dob);
                         // Validate
                         if (account == null)
                         {
@@ -1494,7 +1469,7 @@ namespace WebApi.Services
                     case 5:
                         {
                             DateTime dob = (DateTime)worksheet.Cells[row, col].Value;
-                            request.Dob = dob.ToString(ConstantsDefined.DateTimeFormat, System.Globalization.CultureInfo.InvariantCulture);
+                            request.Dob = dob.ToString(ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
                         }
                         break;
                     case 6:
@@ -1939,19 +1914,16 @@ namespace WebApi.Services
         {
             string message;
 
-            var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-            var scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(account.DOB, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
             if (!string.IsNullOrEmpty(origin))
             {
-                var verifyUrl = $"{origin}/account/verify-email?token={account.VerificationToken}&DOB={scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}";
+                var verifyUrl = $"{origin}/account/verify-email?token={account.VerificationToken}&DOB={account.DOB}";
                 message = $@"<p>Please click the below link to verify your email address:</p>
                              <p><a href=""{verifyUrl}"">{verifyUrl}</a></p>";
             }
             else
             {
                 message = $@"<p>Please use the below token to verify your email address with the <code>/accounts/verify-email</code> api route:</p>
-                             <p><code>{account.VerificationToken + "&" + scheduleDate.ToString(ConstantsDefined.DateTimeFormat)}</code></p>";
+                             <p><code>{account.VerificationToken + "&" + account.DOB}</code></p>";
             }
 
             _emailService.Send(
@@ -1986,12 +1958,9 @@ namespace WebApi.Services
         {
             string message;
 
-            var clientTimeZoneId = _appSettings.ClientTimeZoneId;
-            var scheduleDate = TimeZoneInfo.ConvertTimeFromUtc(account.DOB, TimeZoneInfo.FindSystemTimeZoneById(clientTimeZoneId));
-
             if (!string.IsNullOrEmpty(origin))
             {
-                var resetUrl = $"{origin}/account/reset-password?token={account.ResetToken}&DOB={System.Web.HttpUtility.UrlEncode(scheduleDate.ToString(ConstantsDefined.DateTimeFormat))}";
+                var resetUrl = $"{origin}/account/reset-password?token={account.ResetToken}&DOB={System.Web.HttpUtility.UrlEncode(account.DOB)}";
                 message = $@"<p>Please click the below link to reset your password, the link will be valid for 1 day:</p>
                              <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
             }

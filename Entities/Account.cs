@@ -19,7 +19,7 @@ namespace WebApi.Entities
         public string ResetToken { get; set; }
         public DateTime? ResetTokenExpires { get; set; }
         public DateTime? PasswordReset { get; set; }
-        public DateTime DOB { get; set; }
+        public string DOB { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
 

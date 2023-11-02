@@ -22,8 +22,8 @@ namespace WebApi.Helpers
             // CreateMap<Schedule, SchedulePoolElement>();
             // CreateMap<SchedulePoolElement, Schedule>();
 
-            CreateMap<Account, AccountResponse>()
-            .ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src.DOB.ToString(ConstantsDefined.DateTimeFormat)));
+            CreateMap<Account, AccountResponse>();
+            //.ForMember(dest => dest.Dob, opt => opt.MapFrom(src => src));
 
             CreateMap<Account, AuthenticateResponse>();
                 //.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.AccountId));
