@@ -387,8 +387,8 @@ namespace WebApi.Controllers
             {
                 var file = Request.Form.Files[0];
                 string folderName = "Upload";
-                string webRootPath = _hostingEnvironment.ContentRootPath;
-                string newPath = Path.Combine(webRootPath, folderName);
+                string contentRootPath = _hostingEnvironment.ContentRootPath;
+                string newPath = Path.Combine(contentRootPath, folderName);
                 if (!Directory.Exists(newPath))
                 {
                     Directory.CreateDirectory(newPath);
