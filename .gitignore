@@ -52,3 +52,4 @@ WebApiDatabase.db
 /lib
 /WebApiDatabase.db-shm
 /WebApiDatabase.db-wal
+/Upload
