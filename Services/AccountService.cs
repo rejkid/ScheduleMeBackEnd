@@ -47,6 +47,8 @@ using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Runtime.InteropServices;
 //using static System.Runtime.InteropServices.JavaScript.JSType;
+using CliWrap;
+using Aspose.Cells.Drawing;
 
 namespace WebApi.Services
 {
@@ -1310,7 +1312,7 @@ namespace WebApi.Services
                 log.Info("UploadAccounts after locking");
             }
         }
-        public void UploadTimeSlots(string timeSlotsFullPath)
+        public async void UploadTimeSlots(string timeSlotsFullPath)
         {
             try
             {
@@ -1323,12 +1325,9 @@ namespace WebApi.Services
                 {
                     WriteAgents2Agents2TasksInputFile(resultStream);
                     WriteTimeSlots2Agents2TasksInputFile(timeSlotsFullPath, resultStream);
-                    Runa2tExe(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
                 }
-
-                //var srcDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), A2T_OUTPUT);
-                //var distDir = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
-                //System.IO.File.Copy(srcDir, distDir, true);
+                string outputFile = await Runa2tExeAsync(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
+                CreateSchedulesFromOutput(outputFile);
             }
             catch (Exception ex)
             {
@@ -1341,71 +1340,38 @@ namespace WebApi.Services
                 log.Info("UploadAccounts after locking");
             }
         }
-        //[DllImport("C:\\Windows\\System32\\user32.dll")]
-        [DllImport(@"C:\Windows\SysWOW64\DllTest.dll")]
-        public static extern int add(int a, int b);
-        //public static extern void MessageBox(IntPtr hWnd, String text, String caption, uint type);
 
-        private async void Runa2tExe(string uploadFolder, string inputfullPath, string outputfullResultPath)
+        private void CreateSchedulesFromOutput(string outputFile)
         {
+            using (var resultStream = new StreamReader(outputFile))
+            {
+                string line;
+                while ((line = resultStream.ReadLine()) != null)
+                {
+                    if (line.StartsWith("A"))
+                    {
+                        log.Info("Read: " + line);
+                    }
+                }
+            }
+        }
 
-            WindowsIdentity identity = WindowsIdentity.GetCurrent();
-            WindowsPrincipal principal = new WindowsPrincipal(identity);
-            var val = principal.IsInRole(WindowsBuiltInRole.Administrator);
-            //add(2,2);
-            //MessageBox(new IntPtr(0), "Hello World!", "Hello Dialog", 0);
-            var userDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string a2tExePath = /*A2T_EXE;*/Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
+        private async Task<string> Runa2tExeAsync(string uploadFolder, string inputfullPath, string outputfullResultPath)
+        {
+            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.Append(" ").Append(Path.Combine(uploadFolder, A2T_INPUT)).Append(" ").Append(Path.Combine(/*userDir*/uploadFolder, A2T_OUTPUT));
+            stringBuilder.Append(" ").Append(Path.Combine(uploadFolder, A2T_INPUT)).Append(" ").Append(Path.Combine(uploadFolder, A2T_OUTPUT));
 
             var inputPath = Path.Combine(uploadFolder, A2T_INPUT);
             var outputPath = Path.Combine(uploadFolder, A2T_OUTPUT);
             var singleLine = $"{a2tExePath} {inputPath} {outputPath}";
 
-            //new Process
-            //{
-            //    StartInfo = new ProcessStartInfo(singleLine)
-            //    {
-            //        UseShellExecute = true
-            //    }
-            //}.Start();
-
-            //var process = new Process();
-            //var startInfo = new ProcessStartInfo();
-            //startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            //startInfo.FileName = "cmd.exe";
-            //startInfo.Arguments = "/C " + singleLine;
-            //process.StartInfo = startInfo;
-            //process.Start();
-
-             using (System.Diagnostics.Process pProcess = new System.Diagnostics.Process())
-            {
-                //pProcess.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
-                pProcess.StartInfo.FileName = "cmd.exe";// a2tExePath;// "cmd.exe";// a2tExePath
-                pProcess.StartInfo.Arguments = "/C " + singleLine;// stringBuilder.ToString();// $"/c \"{singleLine}\"";// stringBuilder.ToString(); //argument
-                                                                  //pProcess.StartInfo.ArgumentList.Add(A2T_INPUT);
-                                                                  //pProcess.StartInfo.ArgumentList.Add(A2T_OUTPUT);
-                                                                  //pProcess.StartInfo.ErrorDialog = true;
-                pProcess.StartInfo.UseShellExecute = false;
-                //pProcess.StartInfo.Verb = "runas";
-
-                pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Maximized;
-                pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
-                pProcess.EnableRaisingEvents = true;
-                pProcess.StartInfo.RedirectStandardOutput = true;
-                pProcess.StartInfo.RedirectStandardError = true;
-                pProcess.StartInfo.RedirectStandardInput = true;
-                pProcess.OutputDataReceived += process_OutputDataReceived;
-                pProcess.ErrorDataReceived += process_ErrorDataReceived;
-                pProcess.Exited += process_Exited;
-                pProcess.Start();
-                pProcess.BeginOutputReadLine();
-                pProcess.BeginErrorReadLine();
-                //string output = pProcess.StandardOutput.ReadToEnd(); //The output result
-                log.Info("Executing " + a2tExePath + " " + pProcess.StartInfo.Arguments);
-                await pProcess.WaitForExitAsync();
-            }
+            var result = await Cli.Wrap(a2tExePath)
+                            .WithArguments(new[] { inputPath, outputPath })
+                            .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
+                            .ExecuteAsync();
+            log.Info("Result=" + result.ExitCode);
+            return outputPath;
         }
         void process_Exited(object sender, System.EventArgs e)
         {
