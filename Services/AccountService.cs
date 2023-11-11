@@ -41,6 +41,11 @@ using Aspose.Cells.Timelines;
 using System.Collections;
 using System.Xml;
 using Org.BouncyCastle.Asn1.Ocsp;
+using static Org.BouncyCastle.Bcpg.Attr.ImageAttrib;
+using System.Globalization;
+using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Components.Forms;
+using System.Runtime.InteropServices;
 //using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebApi.Services
@@ -81,6 +86,7 @@ namespace WebApi.Services
         void Delete(string id);
         public string[] RoleConfiguration();
         public void UploadAccounts(string path);
+        void UploadTimeSlots(string fullPath);
 
         public IEnumerable<AccountResponse> DeleteAllUserAccounts();
         public bool GetAutoEmail();
@@ -90,6 +96,11 @@ namespace WebApi.Services
 
     public class AccountService : IAccountService
     {
+        private const string AGENTS_2_TASKS_FORMAT = "yyyyMMddhhmm";// "dd/MMM/yyyy/h:mm";
+        private const string SEPARATOR = "&";
+        private const string A2T_INPUT = "a2t.txt";
+        private const string A2T_OUTPUT = "a2t_result.txt";
+        private const string A2T_EXE = "Agents2TasksConsole.exe";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
 
@@ -104,6 +115,7 @@ namespace WebApi.Services
         private readonly IUserStore<Account> _userStore;
         private readonly IUserEmailStore<Account> _emailStore;
         private readonly UserManager<Account> _userManager;
+        private Microsoft.AspNetCore.Hosting.IWebHostEnvironment _hostingEnvironment;
 
         public AccountService(
             DataContext context,
@@ -113,7 +125,8 @@ namespace WebApi.Services
             IHubContext<MessageHub, IMessageHubClient> hubContext,
             UserManager<Account> userManager,
             IConfiguration configuration,
-            IUserStore<Account> userStore
+            IUserStore<Account> userStore,
+            Microsoft.AspNetCore.Hosting.IWebHostEnvironment hostingEnvironment
             )
         {
             _context = context;
@@ -126,6 +139,7 @@ namespace WebApi.Services
             _userManager = userManager;
             _userStore = userStore;
             _emailStore = (IUserEmailStore<Account>)_userStore;
+            _hostingEnvironment = hostingEnvironment;
         }
 
         public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
@@ -1296,6 +1310,178 @@ namespace WebApi.Services
                 log.Info("UploadAccounts after locking");
             }
         }
+        public void UploadTimeSlots(string timeSlotsFullPath)
+        {
+            try
+            {
+                /* Create output file*/
+                
+                string inputfullPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
+                string outputfullResultPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
+
+                using (var resultStream = new StreamWriter(inputfullPath))
+                {
+                    WriteAgents2Agents2TasksInputFile(resultStream);
+                    WriteTimeSlots2Agents2TasksInputFile(timeSlotsFullPath, resultStream);
+                    Runa2tExe(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
+                }
+
+                //var srcDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), A2T_OUTPUT);
+                //var distDir = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
+                //System.IO.File.Copy(srcDir, distDir, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                throw;
+            }
+            finally
+            {
+                log.Info("UploadAccounts after locking");
+            }
+        }
+        //[DllImport("C:\\Windows\\System32\\user32.dll")]
+        [DllImport(@"C:\Windows\SysWOW64\DllTest.dll")]
+        public static extern int add(int a, int b);
+        //public static extern void MessageBox(IntPtr hWnd, String text, String caption, uint type);
+
+        private async void Runa2tExe(string uploadFolder, string inputfullPath, string outputfullResultPath)
+        {
+
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            var val = principal.IsInRole(WindowsBuiltInRole.Administrator);
+            //add(2,2);
+            //MessageBox(new IntPtr(0), "Hello World!", "Hello Dialog", 0);
+            var userDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string a2tExePath = /*A2T_EXE;*/Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.Append(" ").Append(Path.Combine(uploadFolder, A2T_INPUT)).Append(" ").Append(Path.Combine(/*userDir*/uploadFolder, A2T_OUTPUT));
+
+            var inputPath = Path.Combine(uploadFolder, A2T_INPUT);
+            var outputPath = Path.Combine(uploadFolder, A2T_OUTPUT);
+            var singleLine = $"{a2tExePath} {inputPath} {outputPath}";
+
+            //new Process
+            //{
+            //    StartInfo = new ProcessStartInfo(singleLine)
+            //    {
+            //        UseShellExecute = true
+            //    }
+            //}.Start();
+
+            //var process = new Process();
+            //var startInfo = new ProcessStartInfo();
+            //startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            //startInfo.FileName = "cmd.exe";
+            //startInfo.Arguments = "/C " + singleLine;
+            //process.StartInfo = startInfo;
+            //process.Start();
+
+             using (System.Diagnostics.Process pProcess = new System.Diagnostics.Process())
+            {
+                //pProcess.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
+                pProcess.StartInfo.FileName = "cmd.exe";// a2tExePath;// "cmd.exe";// a2tExePath
+                pProcess.StartInfo.Arguments = "/C " + singleLine;// stringBuilder.ToString();// $"/c \"{singleLine}\"";// stringBuilder.ToString(); //argument
+                                                                  //pProcess.StartInfo.ArgumentList.Add(A2T_INPUT);
+                                                                  //pProcess.StartInfo.ArgumentList.Add(A2T_OUTPUT);
+                                                                  //pProcess.StartInfo.ErrorDialog = true;
+                pProcess.StartInfo.UseShellExecute = false;
+                //pProcess.StartInfo.Verb = "runas";
+
+                pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Maximized;
+                pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
+                pProcess.EnableRaisingEvents = true;
+                pProcess.StartInfo.RedirectStandardOutput = true;
+                pProcess.StartInfo.RedirectStandardError = true;
+                pProcess.StartInfo.RedirectStandardInput = true;
+                pProcess.OutputDataReceived += process_OutputDataReceived;
+                pProcess.ErrorDataReceived += process_ErrorDataReceived;
+                pProcess.Exited += process_Exited;
+                pProcess.Start();
+                pProcess.BeginOutputReadLine();
+                pProcess.BeginErrorReadLine();
+                //string output = pProcess.StandardOutput.ReadToEnd(); //The output result
+                log.Info("Executing " + a2tExePath + " " + pProcess.StartInfo.Arguments);
+                await pProcess.WaitForExitAsync();
+            }
+        }
+        void process_Exited(object sender, System.EventArgs e)
+        {
+            // do something when process terminates;
+            log.Info("Process exited");
+        }
+
+        void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            // a line is writen to the out stream. you can use it like:
+            string s = e.Data;
+            log.Info("Output:"+s);
+        }
+
+        void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            // a line is writen to the out stream. you can use it like:
+            string s = e.Data;
+            log.Info("Error Output:" + s);
+        }
+        private void WriteAgents2Agents2TasksInputFile(StreamWriter resultStream)
+        {
+            var accounts = _context.Accounts.Include(x => x.UserFunctions);
+            foreach (var account in accounts)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("a ");
+                if (account.Role != Role.Admin)
+                {
+                    sb.Append(account.FirstName).Append(SEPARATOR).Append(account.LastName).Append(SEPARATOR).Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+                    for (int i = 0; i < account.UserFunctions.Count; i++)
+                    {
+                        sb.Append(account.UserFunctions[i].UserFunction).Append(" ");
+                    }
+                    resultStream.WriteLine(sb.ToString());
+                }
+            }
+            resultStream.WriteLine("\n");
+        }
+
+        private static void WriteTimeSlots2Agents2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
+        {
+            // Creates workbook
+            Workbook workbook = new Workbook(xlsmfullPath);
+
+            //Gets first worksheet
+            Worksheet worksheet = workbook.Worksheets[0];
+
+            // Print worksheet name
+            Console.WriteLine("Worksheet: " + worksheet.Name);
+
+            // Get number of rows and columns
+            int rows = worksheet.Cells.MaxDataRow;
+            int cols = worksheet.Cells.MaxDataColumn;
+            for (int row = 0; row <= rows; row++)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("t ");
+                for (int col = 0; col <= cols; col++)
+                {
+                    if (col == 0)
+                    {
+                        DateTime dateTime = (DateTime)worksheet.Cells[row, col].Value;
+                        sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
+                    } else
+                    {
+                        sb.Append(worksheet.Cells[row, col].Value);
+
+                    }
+
+
+                }
+                resultStream.WriteLine(sb.ToString());
+            }
+        }
+
         public IEnumerable<AccountResponse> DeleteAllUserAccounts()
         {
             log.Info("DeleteAllUserAccounts before locking");

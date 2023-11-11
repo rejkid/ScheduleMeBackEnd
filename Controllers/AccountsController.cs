@@ -413,6 +413,38 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpPost("upload-timeslots"), DisableRequestSizeLimit]
+        public ActionResult UploadTimeSlots()
+        {
+            try
+            {
+                var file = Request.Form.Files[0];
+                string folderName = "Upload";
+                string contentRootPath = _hostingEnvironment.ContentRootPath;
+                string newPath = Path.Combine(contentRootPath, folderName);
+                if (!Directory.Exists(newPath))
+                {
+                    Directory.CreateDirectory(newPath);
+                }
+                string fileName = "";
+                if (file.Length > 0)
+                {
+                    fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
+                    string fullPath = Path.Combine(newPath, fileName);
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        file.CopyTo(stream);
+                    }
+                    _accountService.UploadTimeSlots(fullPath);
+                }
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [Authorize]
         [HttpDelete("delete-all-user-accounts")]
         public ActionResult<IEnumerable<AccountResponse>> DeleteAllUserAccounts()
         {
