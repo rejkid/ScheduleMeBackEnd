@@ -1359,8 +1359,8 @@ namespace WebApi.Services
                 System.IO.File.Delete(outputfullResultPath);
                 using (var resultStream = new StreamWriter(inputfullPath))
                 {
-                    WriteAgents2Agents2TasksInputFile(resultStream);
-                    WriteTimeSlots2Agents2TasksInputFile(timeSlotsFullPath, resultStream);
+                    WriteAgents2TasksInputFile(resultStream);
+                    WriteTimeSlots2TasksInputFile(timeSlotsFullPath, resultStream);
                 }
                 string outputFile = Runa2tExeAsync(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
                 CreateSchedulesFromOutput(outputFile);
@@ -1478,7 +1478,7 @@ namespace WebApi.Services
         //    string s = e.Data;
         //    log.Info("Error Output:" + s);
         //}
-        private void WriteAgents2Agents2TasksInputFile(StreamWriter resultStream)
+        private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {
             var accounts = _context.Accounts.Include(x => x.UserFunctions);
             foreach (var account in accounts)
@@ -1499,7 +1499,7 @@ namespace WebApi.Services
 
         }
 
-        private static void WriteTimeSlots2Agents2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
+        private static void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
         {
             // Creates workbook
             Workbook workbook = new Workbook(xlsmfullPath);
