@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using WebApi.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using System.Reflection;
 
 namespace WebApi.Helpers
 {
@@ -64,6 +65,19 @@ namespace WebApi.Helpers
                 .HasMany<RefreshToken>(a => a.RefreshTokens)
                 .WithOne(r => r.Account)
                 .OnDelete(DeleteBehavior.ClientCascade);
+        }
+        public bool IsDisposed()
+        {
+            bool result = true;
+            var typeDbContext = typeof(DbContext);
+            var isDisposedTypeField = typeDbContext.GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (isDisposedTypeField != null)
+            {
+                result = (bool)isDisposedTypeField.GetValue(this);
+            }
+
+            return result;
         }
     }
 }

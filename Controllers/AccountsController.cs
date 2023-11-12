@@ -283,6 +283,21 @@ namespace WebApi.Controllers
             return Ok(account);
         }
         [Authorize]
+        [HttpDelete("delete-all-schedules")]
+        public ActionResult<IEnumerable<ScheduleDateTimeResponse>> DeleteAllSchedules()
+        {
+            try
+            {
+                var accounts = _accountService.DeleteAllSchedules();
+                return Ok(accounts);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
         [HttpPut("add-function/{id}")]
         public ActionResult<AccountResponse> AddFunction(string id, UpdateUserFunctionRequest function)
         {

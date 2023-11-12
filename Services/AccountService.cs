@@ -71,6 +71,7 @@ namespace WebApi.Services
         AccountResponse Create(CreateRequest model);
         AccountResponse Update(string id, AccountRequest model);
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
+        public IEnumerable<UpdateScheduleRequest> DeleteAllSchedules();
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
@@ -103,6 +104,7 @@ namespace WebApi.Services
         private const string A2T_INPUT = "a2t.txt";
         private const string A2T_OUTPUT = "a2t_result.txt";
         private const string A2T_EXE = "Agents2TasksConsole.exe";
+        private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
 
@@ -833,6 +835,38 @@ namespace WebApi.Services
                 }
             }
         }
+        public IEnumerable<UpdateScheduleRequest> DeleteAllSchedules()
+        {
+            log.Info("DeleteAllSchedules before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var foundSchedules = _context.Schedules.ToArray().ToList();
+                    _context.Schedules.RemoveRange(foundSchedules);
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+
+                    var schedules = _context.Schedules;
+                    return _mapper.Map<IList<UpdateScheduleRequest>>(schedules);
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllSchedules:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("DeleteAllSchedules after locking");
+                }
+            }
+        }
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
@@ -1312,12 +1346,13 @@ namespace WebApi.Services
                 log.Info("UploadAccounts after locking");
             }
         }
-        public async void UploadTimeSlots(string timeSlotsFullPath)
+        public void UploadTimeSlots(string timeSlotsFullPath)
         {
             try
             {
+                DeleteAllSchedules();
                 /* Create output file*/
-                
+
                 string inputfullPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
                 string outputfullResultPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
 
@@ -1326,7 +1361,7 @@ namespace WebApi.Services
                     WriteAgents2Agents2TasksInputFile(resultStream);
                     WriteTimeSlots2Agents2TasksInputFile(timeSlotsFullPath, resultStream);
                 }
-                string outputFile = await Runa2tExeAsync(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
+                string outputFile = Runa2tExeAsync(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
                 CreateSchedulesFromOutput(outputFile);
             }
             catch (Exception ex)
@@ -1343,55 +1378,105 @@ namespace WebApi.Services
 
         private void CreateSchedulesFromOutput(string outputFile)
         {
-            using (var resultStream = new StreamReader(outputFile))
+            log.Info("CreateSchedulesFromOutput before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
-                string line;
-                while ((line = resultStream.ReadLine()) != null)
+                try
                 {
-                    if (line.StartsWith("A"))
+                    using (var resultStream = new StreamReader(outputFile))
                     {
-                        log.Info("Read: " + line);
+                        string line;
+                        while ((line = resultStream.ReadLine()) != null)
+                        {
+                            if (line.StartsWith("A"))
+                            {
+                                log.Info("Read: " + line);
+
+                                var lineComponents = line.Split(" ");
+                                var dateStr = DateTime.ParseExact(lineComponents[1], AGENTS_2_TASKS_FORMAT,
+                                                        CultureInfo.InvariantCulture).ToString(DATE_TIME_FORMAT);
+                                var functionStr = lineComponents[4];
+                                var accountComponents = lineComponents[2].Split("&");
+                                var emailStr = accountComponents[0];
+                                var dobStr = accountComponents[1];
+
+                                var groupStr = string.Empty;
+                                if (accountComponents.Length > 2)
+                                    groupStr = accountComponents[2];
+                                Account account = _context.Accounts.Include(x => x.Schedules).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
+                                Debug.Assert(account != null);
+
+                                Console.WriteLine($"{dateStr}");
+                                Schedule schedule = new Schedule
+                                {
+                                    Date = dateStr,
+                                    Email = emailStr,
+                                    ScheduleGroup = groupStr,
+                                    UserFunction = functionStr,
+                                    Dob = dobStr,
+                                };
+                                account.Schedules.Add(schedule);
+                                _context.Accounts.Update(account);
+                            }
+                        }
                     }
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    //Thread.Sleep(1000 * 30);
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in CreateSchedulesFromOutput:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("CreateSchedulesFromOutput after locking");
                 }
             }
+
         }
 
-        private async Task<string> Runa2tExeAsync(string uploadFolder, string inputfullPath, string outputfullResultPath)
+        private string Runa2tExeAsync(string uploadFolder, string inputfullPath, string outputfullResultPath)
         {
-            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.Append(" ").Append(Path.Combine(uploadFolder, A2T_INPUT)).Append(" ").Append(Path.Combine(uploadFolder, A2T_OUTPUT));
 
+            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
             var inputPath = Path.Combine(uploadFolder, A2T_INPUT);
             var outputPath = Path.Combine(uploadFolder, A2T_OUTPUT);
-            var singleLine = $"{a2tExePath} {inputPath} {outputPath}";
 
-            var result = await Cli.Wrap(a2tExePath)
+            var result = Cli.Wrap(a2tExePath)
                             .WithArguments(new[] { inputPath, outputPath })
                             .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
                             .ExecuteAsync();
-            log.Info("Result=" + result.ExitCode);
+            log.Info("Result=" + result);
+
             return outputPath;
         }
-        void process_Exited(object sender, System.EventArgs e)
-        {
-            // do something when process terminates;
-            log.Info("Process exited");
-        }
+        //void process_Exited(object sender, System.EventArgs e)
+        //{
+        //    // do something when process terminates;
+        //    log.Info("Process exited");
+        //}
 
-        void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            // a line is writen to the out stream. you can use it like:
-            string s = e.Data;
-            log.Info("Output:"+s);
-        }
+        //void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        //{
+        //    // a line is writen to the out stream. you can use it like:
+        //    string s = e.Data;
+        //    log.Info("Output:" + s);
+        //}
 
-        void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            // a line is writen to the out stream. you can use it like:
-            string s = e.Data;
-            log.Info("Error Output:" + s);
-        }
+        //void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        //{
+        //    // a line is writen to the out stream. you can use it like:
+        //    string s = e.Data;
+        //    log.Info("Error Output:" + s);
+        //}
         private void WriteAgents2Agents2TasksInputFile(StreamWriter resultStream)
         {
             var accounts = _context.Accounts.Include(x => x.UserFunctions);
@@ -1401,7 +1486,7 @@ namespace WebApi.Services
                 sb.Append("a ");
                 if (account.Role != Role.Admin)
                 {
-                    sb.Append(account.FirstName).Append(SEPARATOR).Append(account.LastName).Append(SEPARATOR).Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+                    sb.Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(SEPARATOR).Append(account.ScheduleGroup).Append(" ").Append("1").Append(" ");
                     for (int i = 0; i < account.UserFunctions.Count; i++)
                     {
                         sb.Append(account.UserFunctions[i].UserFunction).Append(" ");
@@ -1410,6 +1495,7 @@ namespace WebApi.Services
                 }
             }
             resultStream.WriteLine("\n");
+
         }
 
         private static void WriteTimeSlots2Agents2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
@@ -1439,10 +1525,7 @@ namespace WebApi.Services
                     } else
                     {
                         sb.Append(worksheet.Cells[row, col].Value);
-
                     }
-
-
                 }
                 resultStream.WriteLine(sb.ToString());
             }
