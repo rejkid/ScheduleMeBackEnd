@@ -1355,7 +1355,8 @@ namespace WebApi.Services
 
                 string inputfullPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
                 string outputfullResultPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
-
+                System.IO.File.Delete(inputfullPath);
+                System.IO.File.Delete(outputfullResultPath);
                 using (var resultStream = new StreamWriter(inputfullPath))
                 {
                     WriteAgents2Agents2TasksInputFile(resultStream);
@@ -1453,7 +1454,7 @@ namespace WebApi.Services
             var result = Cli.Wrap(a2tExePath)
                             .WithArguments(new[] { inputPath, outputPath })
                             .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
-                            .ExecuteAsync();
+                            .ExecuteAsync().GetAwaiter().GetResult();
             log.Info("Result=" + result);
 
             return outputPath;
@@ -1504,7 +1505,7 @@ namespace WebApi.Services
             Workbook workbook = new Workbook(xlsmfullPath);
 
             //Gets first worksheet
-            Worksheet worksheet = workbook.Worksheets[0];
+            Worksheet worksheet = workbook.Worksheets[1];
 
             // Print worksheet name
             Console.WriteLine("Worksheet: " + worksheet.Name);
