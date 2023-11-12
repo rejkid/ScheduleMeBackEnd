@@ -413,6 +413,7 @@ namespace WebApi.Controllers
                 {
                     fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
                     string fullPath = Path.Combine(newPath, fileName);
+                    System.IO.File.Delete(fullPath);
                     using (var stream = new FileStream(fullPath, FileMode.Create))
                     {
                         file.CopyTo(stream);
@@ -446,6 +447,7 @@ namespace WebApi.Controllers
                 {
                     fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
                     string fullPath = Path.Combine(newPath, fileName);
+                    System.IO.File.Delete(fullPath);
                     using (var stream = new FileStream(fullPath, FileMode.Create))
                     {
                         file.CopyTo(stream);
