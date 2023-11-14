@@ -1463,25 +1463,6 @@ namespace WebApi.Services
 
             return outputPath;
         }
-        //void process_Exited(object sender, System.EventArgs e)
-        //{
-        //    // do something when process terminates;
-        //    log.Info("Process exited");
-        //}
-
-        //void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        //{
-        //    // a line is writen to the out stream. you can use it like:
-        //    string s = e.Data;
-        //    log.Info("Output:" + s);
-        //}
-
-        //void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        //{
-        //    // a line is writen to the out stream. you can use it like:
-        //    string s = e.Data;
-        //    log.Info("Error Output:" + s);
-        //}
         private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {
             var accounts = _context.Accounts.Include(x => x.UserFunctions);
@@ -1499,7 +1480,7 @@ namespace WebApi.Services
                     resultStream.WriteLine(sb.ToString());
                 }
             }
-            //resultStream.WriteLine("\n");
+            resultStream.WriteLine("\n");
 
         }
 
