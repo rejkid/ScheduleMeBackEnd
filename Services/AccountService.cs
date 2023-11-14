@@ -1391,6 +1391,7 @@ namespace WebApi.Services
                         string line;
                         while ((line = resultStream.ReadLine()) != null)
                         {
+                            line.Trim();
                             if (line.StartsWith("A"))
                             {
                                 log.Info("Read: " + line);
@@ -1399,6 +1400,7 @@ namespace WebApi.Services
                                 var dateStr = DateTime.ParseExact(lineComponents[1], AGENTS_2_TASKS_FORMAT,
                                                         CultureInfo.InvariantCulture).ToString(DATE_TIME_FORMAT);
                                 var functionStr = lineComponents[4];
+                                Debug.Assert(lineComponents.Length >= 5);
                                 var accountComponents = lineComponents[2].Split("&");
                                 var emailStr = accountComponents[0];
                                 var dobStr = accountComponents[1];
@@ -1454,7 +1456,9 @@ namespace WebApi.Services
             var result = Cli.Wrap(a2tExePath)
                             .WithArguments(new[] { inputPath, outputPath })
                             .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
-                            .ExecuteAsync().GetAwaiter().GetResult();
+                            .WithValidation(CommandResultValidation.None)
+                            .ExecuteAsync().GetAwaiter().GetResult()
+                            ;
             log.Info("Result=" + result);
 
             return outputPath;
@@ -1495,7 +1499,7 @@ namespace WebApi.Services
                     resultStream.WriteLine(sb.ToString());
                 }
             }
-            resultStream.WriteLine("\n");
+            //resultStream.WriteLine("\n");
 
         }
 
