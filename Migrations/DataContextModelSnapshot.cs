@@ -163,7 +163,7 @@ namespace WebApi.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("DOB")
+                    b.Property<string>("DOB")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")

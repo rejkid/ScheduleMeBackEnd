@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebApi.Entities
 {
     public class Account : IdentityUser
-    { 
+    {
+        
+        //[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        //public int RowId { get; set; }
         public string Title { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }

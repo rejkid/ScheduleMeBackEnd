@@ -46,7 +46,6 @@ using System.Globalization;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Runtime.InteropServices;
-//using static System.Runtime.InteropServices.JavaScript.JSType;
 using CliWrap;
 using Aspose.Cells.Drawing;
 
@@ -103,7 +102,7 @@ namespace WebApi.Services
         private const string SEPARATOR = "&";
         private const string A2T_INPUT = "a2t.txt";
         private const string A2T_OUTPUT = "a2t_result.txt";
-        private const string A2T_EXE = "Agents2TasksConsole.exe";
+        private const string A2T_EXE = "Agents2Tasks.exe";
         private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
@@ -335,7 +334,7 @@ namespace WebApi.Services
                         sendVerificationEmail(user, origin);
                     }
                     transaction.Commit();
-                    log.WarnFormat("Registration successful for = {0} ", model.Email);
+                    log.WarnFormat("Registration successful for = '{0}' ", model.Email);
                     return result;
                  
 
@@ -1362,8 +1361,8 @@ namespace WebApi.Services
                     WriteAgents2TasksInputFile(resultStream);
                     WriteTimeSlots2TasksInputFile(timeSlotsFullPath, resultStream);
                 }
-                string outputFile = Runa2tExeAsync(Path.GetDirectoryName(timeSlotsFullPath), inputfullPath, outputfullResultPath);
-                CreateSchedulesFromOutput(outputFile);
+                Runa2tExeAsync(inputfullPath, outputfullResultPath);
+                CreateSchedulesFromOutput(outputfullResultPath);
             }
             catch (Exception ex)
             {
@@ -1397,17 +1396,44 @@ namespace WebApi.Services
                                 log.Info("Read: " + line);
 
                                 var lineComponents = line.Split(" ");
+
+                                Debug.Assert(lineComponents.Length >= 5);
                                 var dateStr = DateTime.ParseExact(lineComponents[1], AGENTS_2_TASKS_FORMAT,
                                                         CultureInfo.InvariantCulture).ToString(DATE_TIME_FORMAT);
-                                var functionStr = lineComponents[4];
-                                Debug.Assert(lineComponents.Length >= 5);
-                                var accountComponents = lineComponents[2].Split("&");
-                                var emailStr = accountComponents[0];
-                                var dobStr = accountComponents[1];
 
-                                var groupStr = string.Empty;
-                                if (accountComponents.Length > 2)
-                                    groupStr = accountComponents[2];
+                                string[] accountComponents;
+                                string emailStr;
+                                string dobStr;
+                                var functionStr = string.Empty;
+                                if (lineComponents.Length >= 7)
+                                {
+                                    // 7 element record
+                                    functionStr = lineComponents[6];
+                                    accountComponents = lineComponents[2].Split("&");
+                                    emailStr = accountComponents[0];
+                                    dobStr = accountComponents[1];
+                                }
+                                else
+                                {
+                                    // 5 element record
+                                    functionStr = lineComponents[4];
+                                    accountComponents = lineComponents[2].Split("&");
+                                    emailStr = accountComponents[0];
+                                    dobStr = accountComponents[1];
+                                }
+                                accountComponents = lineComponents[2].Split("&");
+                                emailStr = accountComponents[0];
+                                dobStr = accountComponents[1].Split("_")[0];
+                                if(lineComponents.Length <= 5 && accountComponents[1].Split("_").Length == 2)
+                                {
+                                    // This is lead agent name - skip it
+                                    Console.WriteLine();
+                                    continue;
+                                }
+
+                                //var groupStr = string.Empty;
+                                //if (accountComponents.Length > 2)
+                                //    groupStr = accountComponents[2];
                                 Account account = _context.Accounts.Include(x => x.Schedules).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
                                 Debug.Assert(account != null);
 
@@ -1416,7 +1442,7 @@ namespace WebApi.Services
                                 {
                                     Date = dateStr,
                                     Email = emailStr,
-                                    ScheduleGroup = groupStr,
+                                    ScheduleGroup = account.ScheduleGroup,
                                     UserFunction = functionStr,
                                     Dob = dobStr,
                                 };
@@ -1446,43 +1472,149 @@ namespace WebApi.Services
 
         }
 
-        private string Runa2tExeAsync(string uploadFolder, string inputfullPath, string outputfullResultPath)
+        private void Runa2tExeAsync(string inputfullPath, string outputfullResultPath)
         {
 
             string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
-            var inputPath = Path.Combine(uploadFolder, A2T_INPUT);
-            var outputPath = Path.Combine(uploadFolder, A2T_OUTPUT);
 
             var result = Cli.Wrap(a2tExePath)
-                            .WithArguments(new[] { inputPath, outputPath })
+                            .WithArguments(new[] { inputfullPath, outputfullResultPath })
                             .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
                             .WithValidation(CommandResultValidation.None)
                             .ExecuteAsync().GetAwaiter().GetResult()
                             ;
             log.Info("Result=" + result);
-
-            return outputPath;
+            if (result.ExitCode != 0)
+                throw new AppException("Unknown exit code=" + result.ExitCode);
         }
         private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {
-            var accounts = _context.Accounts.Include(x => x.UserFunctions);
+            StringBuilder outputString = new StringBuilder();
+
+            // Output agent specification
+            var accounts = _context.Accounts.Include(x => x.UserFunctions)/*.OrderBy(a => a.Email)*/.ToList();
+
             foreach (var account in accounts)
             {
-                StringBuilder sb = new StringBuilder();
-                sb.Append("a ");
                 if (account.Role != Role.Admin)
                 {
-                    sb.Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(SEPARATOR).Append(account.ScheduleGroup).Append(" ").Append("1").Append(" ");
+                    outputString.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).
+                        Append(" ").Append("1").Append(" ");
+
+                    //if (account.ScheduleGroup.Length > 0)
+                    //    outputString.Append(account.ScheduleGroup);
+                    //else
+
+                    // Agent family
+                    outputString.Append(account.Email);
+
+                    outputString.Append(" ");
+                    bool functionFound = false;
                     for (int i = 0; i < account.UserFunctions.Count; i++)
                     {
-                        sb.Append(account.UserFunctions[i].UserFunction).Append(" ");
+                        // We will specify "Cleaner" in agent group for Cleaner task
+                        if (account.UserFunctions[i].UserFunction != "Cleaner")
+                        {
+                            outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
+                            functionFound = true;
+                        }
                     }
-                    resultStream.WriteLine(sb.ToString());
+                    if(!functionFound)
+                        outputString.Append("none");
+                    outputString.Append("\n");
                 }
             }
+            // Output group agent
+            WriteGroupCleanerTaskRecords(outputString);
+
+            resultStream.WriteLine(outputString.ToString());
             resultStream.WriteLine("\n");
 
         }
+
+        private void WriteGroupCleanerTaskRecords(StringBuilder outputString)
+        {
+            var cleanerAccounts = _context.Accounts
+                              .Include(x => x.UserFunctions)
+                              .Where(account => account.UserFunctions
+                                                       .Any(uf => uf.UserFunction.Equals("Cleaner")))
+                              .ToArray();
+
+            /* Sorted map - so the groups are in the order A/B/C etc*/
+            var map = new SortedDictionary<string, List<Account>>();
+            foreach (var account in cleanerAccounts)
+            {
+
+                if (map.ContainsKey(account.ScheduleGroup))
+                {
+                    var list = map.GetValueOrDefault(account.ScheduleGroup);
+                    list.Add(account);
+                }
+                else
+                {
+                    var l = new List<Account>();
+                    l.Add(account);
+                    map.Add(account.ScheduleGroup, l);
+                }
+            }
+            foreach (var keyValuePair in map)
+            {
+                outputString.Append("g Cleaner");
+                //outputString.Append(keyValuePair.Key);
+                foreach (var a in keyValuePair.Value)
+                {
+                    outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
+                }
+                outputString.Append("\n");
+            }
+        }
+        
+        /* Writing two sections for the cleaners and rest */
+        //private void WriteAgents2TasksInputFile(StreamWriter resultStream)
+        //{
+        //    var accounts = _context.Accounts.Include(x => x.UserFunctions).OrderBy(a => a.Email).ToList();
+
+        //    StringBuilder outputString = new StringBuilder();
+        //    StringBuilder sbCleaners = new StringBuilder();
+        //    foreach (var account in accounts)
+        //    {
+
+
+        //        if (account.Role != Role.Admin)
+        //        {
+        //            if (account.ScheduleGroup.Length <= 0)
+        //            {
+        //                // For non cleaners
+        //                outputString.Append("a").Append(" ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+
+        //                outputString.Append(account.Email);
+
+        //                outputString.Append(" ");
+        //                for (int i = 0; i < account.UserFunctions.Count; i++)
+        //                {
+        //                    if (account.UserFunctions[i].UserFunction.Equals("Cleaner"))
+        //                        outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
+        //                }
+        //                outputString.Append("\n");
+        //            }
+        //            else
+        //            {
+        //                // cleaners
+        //                sbCleaners.Append("a").Append(" ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+        //                sbCleaners.Append(account.ScheduleGroup);
+
+        //                sbCleaners.Append(" ");
+        //                var array = account.UserFunctions.ToArray();
+        //                var func = (array.FirstOrDefault(f => f.UserFunction.Equals("Cleaner")));
+        //                sbCleaners.Append(func.UserFunction).Append("\n");
+        //            }
+        //        }
+        //    }
+        //    resultStream.Write(sbCleaners.ToString());
+        //    resultStream.WriteLine("\n");
+        //    resultStream.Write(outputString.ToString());
+        //    resultStream.WriteLine("\n");
+        //}
 
         private static void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
         {
