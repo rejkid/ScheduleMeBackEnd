@@ -1501,10 +1501,6 @@ namespace WebApi.Services
                     outputString.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).
                         Append(" ").Append("1").Append(" ");
 
-                    //if (account.ScheduleGroup.Length > 0)
-                    //    outputString.Append(account.ScheduleGroup);
-                    //else
-
                     // Agent family
                     outputString.Append(account.Email);
 
@@ -1569,53 +1565,6 @@ namespace WebApi.Services
             }
         }
         
-        /* Writing two sections for the cleaners and rest */
-        //private void WriteAgents2TasksInputFile(StreamWriter resultStream)
-        //{
-        //    var accounts = _context.Accounts.Include(x => x.UserFunctions).OrderBy(a => a.Email).ToList();
-
-        //    StringBuilder outputString = new StringBuilder();
-        //    StringBuilder sbCleaners = new StringBuilder();
-        //    foreach (var account in accounts)
-        //    {
-
-
-        //        if (account.Role != Role.Admin)
-        //        {
-        //            if (account.ScheduleGroup.Length <= 0)
-        //            {
-        //                // For non cleaners
-        //                outputString.Append("a").Append(" ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
-
-        //                outputString.Append(account.Email);
-
-        //                outputString.Append(" ");
-        //                for (int i = 0; i < account.UserFunctions.Count; i++)
-        //                {
-        //                    if (account.UserFunctions[i].UserFunction.Equals("Cleaner"))
-        //                        outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
-        //                }
-        //                outputString.Append("\n");
-        //            }
-        //            else
-        //            {
-        //                // cleaners
-        //                sbCleaners.Append("a").Append(" ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
-        //                sbCleaners.Append(account.ScheduleGroup);
-
-        //                sbCleaners.Append(" ");
-        //                var array = account.UserFunctions.ToArray();
-        //                var func = (array.FirstOrDefault(f => f.UserFunction.Equals("Cleaner")));
-        //                sbCleaners.Append(func.UserFunction).Append("\n");
-        //            }
-        //        }
-        //    }
-        //    resultStream.Write(sbCleaners.ToString());
-        //    resultStream.WriteLine("\n");
-        //    resultStream.Write(outputString.ToString());
-        //    resultStream.WriteLine("\n");
-        //}
-
         private static void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
         {
             // Creates workbook
@@ -1714,6 +1663,14 @@ namespace WebApi.Services
                     {
                         // Create request
                         CreateUser(worksheet, cols, row, request, functionRequests, group);
+
+                        /* Check that the "Cleaner" has group specified*/
+                        bool isCleaner = functionRequests.Any(fr => fr.UserFunction.Equals("Cleaner"));
+                        if(isCleaner && group.ToString().Trim().Length == 0)
+                        {
+                            throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row));
+                        }
+
                         // Schedule and functions have been red in
                         request.Role = Role.User.ToString();
                         request.Password = "Password@100";
