@@ -48,6 +48,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using System.Runtime.InteropServices;
 using CliWrap;
 using Aspose.Cells.Drawing;
+using System.Net.Mail;
 
 namespace WebApi.Services
 {
@@ -1302,9 +1303,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    string s = _appSettings.Roles;
-                    string[] subs = s.Split(',');
-                    return subs;
+                    return GetFunctionDefinitions();
                 }
                 catch (Exception ex)
                 {
@@ -1320,6 +1319,19 @@ namespace WebApi.Services
                 }
             }
         }
+
+        private string[] GetFunctionDefinitions()
+        {
+            List<string> strings = new List<string>();
+            string s = _appSettings.Roles.Trim();
+            string[] subs = s.Split(',');
+            foreach(string func in subs)
+            {
+                strings.Add(func.Trim());
+            }
+            return strings.ToArray();
+        }
+
         public void UploadAccounts(string path)
         {
             try
@@ -1664,16 +1676,15 @@ namespace WebApi.Services
                         // Create request
                         CreateUser(worksheet, cols, row, request, functionRequests, group);
 
-                        /* Check that the "Cleaner" has group specified*/
+                        /* Check that the "Cleaner" has group specified */
                         bool isCleaner = functionRequests.Any(fr => fr.UserFunction.Equals("Cleaner"));
                         if(isCleaner && group.ToString().Trim().Length == 0)
                         {
-                            throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row));
+                            throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
                         }
 
                         // Schedule and functions have been red in
                         request.Role = Role.User.ToString();
-                        request.Password = "Password@100";
 
                         Account account = _context.Accounts.SingleOrDefault(x => x.Email == request.Email && x.DOB == request.Dob);
                         // Validate
@@ -1741,7 +1752,6 @@ namespace WebApi.Services
         {
 
             // Loop through each column in selected row
-            //string group = string.Empty;
             for (int col = 0; col <= noOfCols; col++)
             {
                 switch (col)
@@ -1750,24 +1760,38 @@ namespace WebApi.Services
                         {
                             request.Title = (string)worksheet.Cells[row, col].Value;
                             request.Title = (request.Title == null) ? string.Empty : request.Title.Trim();
+                            if(request.Title.Length <= 0)
+                                throw new AppException(String.Format("Title can't be empty at row {0}", row + 1));
                         }
                         break;
                     case 1:
                         {
                             request.FirstName = (string)worksheet.Cells[row, col].Value;
                             request.FirstName = (request.FirstName == null) ? string.Empty : request.FirstName.Trim();
+                            if (request.FirstName.Length <= 0)
+                                throw new AppException(String.Format("First Name can't be empty at row {0}", row + 1));
                         }
                         break;
                     case 2:
                         {
                             request.LastName = (string)worksheet.Cells[row, col].Value;
                             request.LastName = (request.LastName == null) ? string.Empty : request.LastName.Trim();
+                            if (request.LastName.Length <= 0)
+                                throw new AppException(String.Format("Last Name can't be empty at row {0}", row + 1));
                         }
                         break;
                     case 3:
                         {
-                            request.Email = (string)worksheet.Cells[row, col].Value;
-                            request.Email = (request.Email == null) ? string.Empty : request.Email.Trim();
+                            try
+                            {
+                                request.Email = (string)worksheet.Cells[row, col].Value;
+                                request.Email = (request.Email == null) ? string.Empty : request.Email.Trim();
+                                MailAddress m = new MailAddress(request.Email);
+                            }
+                            catch (Exception)
+                            {
+                                throw new AppException(String.Format("Email is in wrong format at row {0}", row + 1));
+                            }
                         }
                         break;
                     case 4:
@@ -1778,8 +1802,15 @@ namespace WebApi.Services
                         break;
                     case 5:
                         {
-                            DateTime dob = (DateTime)worksheet.Cells[row, col].Value;
-                            request.Dob = dob.ToString(ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                            try
+                            {
+                                DateTime dob = (DateTime)worksheet.Cells[row, col].Value;
+                                request.Dob = dob.ToString(ConstantsDefined.DateFormat, System.Globalization.CultureInfo.InvariantCulture);
+                            }
+                            catch (Exception)
+                            {
+                                throw new AppException(String.Format("DOB is in wrong format at row {0}", row + 1));
+                            }
                         }
                         break;
                     case 6:
@@ -1789,6 +1820,9 @@ namespace WebApi.Services
 
                             request.ConfirmPassword = (string)worksheet.Cells[row, col].Value;
                             request.ConfirmPassword = (request.ConfirmPassword == null) ? string.Empty : request.ConfirmPassword.Trim();
+
+                            if(request.Password.Length == 0)
+                                throw new AppException(String.Format("Password can't be empty at row {0}", row + 1));
                         }
                         break;
                     case 7:
@@ -1797,12 +1831,18 @@ namespace WebApi.Services
                             var functionsStr = (string)worksheet.Cells[row, col].Value;
                             functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
                             string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(',');
+                            if(functions.Length <= 0)
+                                throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
+
                             foreach (var functionStr in functions)
                             {
                                 UpdateUserFunctionRequest req = new UpdateUserFunctionRequest
                                 {
                                     UserFunction = functionStr.Trim(),
                                 };
+                                if (!GetFunctionDefinitions().Contains(req.UserFunction))
+                                    throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, req.UserFunction));
+
                                 functionRequests.Add(req);
                             }
                         }
@@ -1816,24 +1856,6 @@ namespace WebApi.Services
                         }
                         break;
 
-                    case 9:
-                        {
-                            // We don't support schedule dates as we are going to generate them
-                            //if (worksheet.Cells[row, col].Value != null)
-                            //{
-                            //    string[] functions = ((string)worksheet.Cells[row, col].Value).Split(',');
-                            //    foreach (var functionStr in functions)
-                            //    {
-                            //        UpdateScheduleRequest req = new UpdateScheduleRequest();
-                            //        //var dateTime = DateTime.Parse(functionStr);
-                            //        req.Date = functionStr;// TimeZoneInfo.ConvertTimeToUtc(dateTime); ;
-                            //        req.UserFunction = functionRequests.UserFunction;
-                            //        req.ScheduleGroup = group;
-                            //        
-                            //    }
-                            //}
-                        }
-                        break;
                     default:
                         // code block
                         break;
