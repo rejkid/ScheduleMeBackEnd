@@ -1830,7 +1830,7 @@ namespace WebApi.Services
                             // Add functions to the user
                             var functionsStr = (string)worksheet.Cells[row, col].Value;
                             functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
-                            string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(',');
+                            string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
                             if(functions.Length <= 0)
                                 throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
 
