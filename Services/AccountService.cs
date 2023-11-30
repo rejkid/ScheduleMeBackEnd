@@ -1583,7 +1583,7 @@ namespace WebApi.Services
             Workbook workbook = new Workbook(xlsmfullPath);
 
             //Gets first worksheet
-            Worksheet worksheet = workbook.Worksheets[1];
+            Worksheet worksheet = workbook.Worksheets[0];
 
             // Print worksheet name
             Console.WriteLine("Worksheet: " + worksheet.Name);
