@@ -388,10 +388,10 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
-        [HttpGet("role-configuration")]
-        public ActionResult<string[]> RoleConfiguration()
+        [HttpGet("tasks")]
+        public ActionResult<string[]> GetTasks()
         {
-            return Ok(_accountService.RoleConfiguration());
+            return Ok(_accountService.GetTasks());
         }
 
         [Authorize]

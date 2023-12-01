@@ -49,6 +49,7 @@ using System.Runtime.InteropServices;
 using CliWrap;
 using Aspose.Cells.Drawing;
 using System.Net.Mail;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace WebApi.Services
 {
@@ -87,7 +88,7 @@ namespace WebApi.Services
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
 
         void Delete(string id);
-        public string[] RoleConfiguration();
+        public string[] GetTasks();
         public void UploadAccounts(string path);
         void UploadTimeSlots(string fullPath);
 
@@ -105,6 +106,7 @@ namespace WebApi.Services
         private const string A2T_OUTPUT = "a2t_result.txt";
         private const string A2T_EXE = "Agents2Tasks.exe";
         private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
+        private const string CLEANER = "Cleaner";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
 
@@ -1294,36 +1296,36 @@ namespace WebApi.Services
             }
         }
 
-        public string[] RoleConfiguration()
+        public string[] GetTasks()
         {
-            log.Info("RoleConfiguration before locking");
+            log.Info("GetTasks before locking");
             semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 try
                 {
-                    return GetFunctionDefinitions();
+                    return GetTasksArray();
                 }
                 catch (Exception ex)
                 {
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in RoleConfiguration:", ex);
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetTasks:", ex);
                     throw;
                 }
                 finally
                 {
                     semaphoreObject.Release();
-                    log.Info("RoleConfiguration after locking");
+                    log.Info("GetTasks after locking");
                 }
             }
         }
 
-        private string[] GetFunctionDefinitions()
+        private string[] GetTasksArray()
         {
             List<string> strings = new List<string>();
-            string s = _appSettings.Roles.Trim();
+            string s = _appSettings.Tasks.Trim();
             string[] subs = s.Split(',');
             foreach(string func in subs)
             {
@@ -1332,6 +1334,17 @@ namespace WebApi.Services
             return strings.ToArray();
         }
 
+        private string[] GetGroupTasksArray()
+        {
+            List<string> strings = new List<string>();
+            string s = _appSettings.GroupTasks.Trim();
+            string[] subs = s.Split(',');
+            foreach (string func in subs)
+            {
+                strings.Add(func.Trim());
+            }
+            return strings.ToArray();
+        }
         public void UploadAccounts(string path)
         {
             try
@@ -1520,11 +1533,14 @@ namespace WebApi.Services
                     bool functionFound = false;
                     for (int i = 0; i < account.UserFunctions.Count; i++)
                     {
-                        // We will specify "Cleaner" in agent group for Cleaner task
-                        if (account.UserFunctions[i].UserFunction != "Cleaner")
+                        // We will specify group in agent group task
+                        foreach (string gt in GetGroupTasksArray())
                         {
-                            outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
-                            functionFound = true;
+                            if (!account.UserFunctions[i].UserFunction.Equals(gt))
+                            {
+                                outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
+                                functionFound = true;
+                            }
                         }
                     }
                     if(!functionFound)
@@ -1533,51 +1549,53 @@ namespace WebApi.Services
                 }
             }
             // Output group agent
-            WriteGroupCleanerTaskRecords(outputString);
+            WriteGroupTaskRecords(outputString);
 
             resultStream.WriteLine(outputString.ToString());
             resultStream.WriteLine("\n");
 
         }
 
-        private void WriteGroupCleanerTaskRecords(StringBuilder outputString)
+        private void WriteGroupTaskRecords(StringBuilder outputString)
         {
-            var cleanerAccounts = _context.Accounts
-                              .Include(x => x.UserFunctions)
-                              .Where(account => account.UserFunctions
-                                                       .Any(uf => uf.UserFunction.Equals("Cleaner")))
-                              .ToArray();
-
-            /* Sorted map - so the groups are in the order A/B/C etc*/
-            var map = new SortedDictionary<string, List<Account>>();
-            foreach (var account in cleanerAccounts)
+            foreach(string tg in GetGroupTasksArray())
             {
+                var cleanerAccounts = _context.Accounts
+                                  .Include(x => x.UserFunctions)
+                                  .Where(account => account.UserFunctions
+                                                           .Any(uf => uf.UserFunction.Equals(tg)))
+                                  .ToArray();
 
-                if (map.ContainsKey(account.ScheduleGroup))
+                /* Sorted map - so the groups are in the order A/B/C etc*/
+                var map = new SortedDictionary<string, List<Account>>();
+                foreach (var account in cleanerAccounts)
                 {
-                    var list = map.GetValueOrDefault(account.ScheduleGroup);
-                    list.Add(account);
+
+                    if (map.ContainsKey(account.ScheduleGroup))
+                    {
+                        var list = map.GetValueOrDefault(account.ScheduleGroup);
+                        list.Add(account);
+                    }
+                    else
+                    {
+                        var l = new List<Account>();
+                        l.Add(account);
+                        map.Add(account.ScheduleGroup, l);
+                    }
                 }
-                else
+                foreach (var keyValuePair in map)
                 {
-                    var l = new List<Account>();
-                    l.Add(account);
-                    map.Add(account.ScheduleGroup, l);
+                    outputString.Append("g " + tg);
+                    foreach (var a in keyValuePair.Value)
+                    {
+                        outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
+                    }
+                    outputString.Append("\n");
                 }
-            }
-            foreach (var keyValuePair in map)
-            {
-                outputString.Append("g Cleaner");
-                //outputString.Append(keyValuePair.Key);
-                foreach (var a in keyValuePair.Value)
-                {
-                    outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
-                }
-                outputString.Append("\n");
             }
         }
         
-        private static void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
+        private void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
         {
             // Creates workbook
             Workbook workbook = new Workbook(xlsmfullPath);
@@ -1603,6 +1621,24 @@ namespace WebApi.Services
                         sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
                     } else
                     {
+                        var functionsStr = (string)worksheet.Cells[row, col].Value;
+                        functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
+                        string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
+                        functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                        if (functions.Length <= 0)
+                            throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
+
+                        foreach (var functionStr in functions)
+                        {
+                            string fStr = functionStr.Trim();
+                            if (!GetTasksArray().Contains(fStr))
+                                throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, fStr));
+                        }
+
+
+
+
+
                         sb.Append(worksheet.Cells[row, col].Value);
                     }
                 }
@@ -1673,14 +1709,17 @@ namespace WebApi.Services
                     // Loop through rows
                     for (int row = 0; row <= rows; row++)
                     {
-                        // Create request
+                        // Create user request
                         CreateUser(worksheet, cols, row, request, functionRequests, group);
 
-                        /* Check that the "Cleaner" has group specified */
-                        bool isCleaner = functionRequests.Any(fr => fr.UserFunction.Equals("Cleaner"));
-                        if(isCleaner && group.ToString().Trim().Length == 0)
+                        /* Check that the each group task (e.g. Cleaner) has some group specified (e.g. A or B etc) */
+                        foreach (string gt in GetGroupTasksArray())
                         {
-                            throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
+                            bool isGroupTask = functionRequests.Any(fr => fr.UserFunction.Equals(gt));
+                            if (isGroupTask && group.ToString().Trim().Length == 0)
+                            {
+                                throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
+                            }
                         }
 
                         // Schedule and functions have been red in
@@ -1831,7 +1870,8 @@ namespace WebApi.Services
                             var functionsStr = (string)worksheet.Cells[row, col].Value;
                             functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
                             string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
-                            if(functions.Length <= 0)
+                            functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                            if (functions.Length <= 0)
                                 throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
 
                             foreach (var functionStr in functions)
@@ -1840,7 +1880,7 @@ namespace WebApi.Services
                                 {
                                     UserFunction = functionStr.Trim(),
                                 };
-                                if (!GetFunctionDefinitions().Contains(req.UserFunction))
+                                if (!GetTasksArray().Contains(req.UserFunction))
                                     throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, req.UserFunction));
 
                                 functionRequests.Add(req);

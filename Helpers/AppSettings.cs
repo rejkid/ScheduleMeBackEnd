@@ -13,7 +13,8 @@ namespace WebApi.Helpers
         public int SmtpPort { get; set; }
         public string SmtpUser { get; set; }
         public string SmtpPass { get; set; }
-        public string Roles { get; set; }
+        public string Tasks { get; set; }
+        public string GroupTasks { get; set; }
         public string ClientTimeZoneId { get; set; }
     }
 }

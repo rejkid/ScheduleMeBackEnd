@@ -265,6 +265,7 @@ namespace WebApi.Migrations
                     FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
+                    Group = table.Column<string>(type: "TEXT", nullable: true),
                     AccountId = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
