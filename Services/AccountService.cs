@@ -89,6 +89,8 @@ namespace WebApi.Services
 
         void Delete(string id);
         public string[] GetTasks();
+        public string[] GetGroupTasks();
+
         public void UploadAccounts(string path);
         void UploadTimeSlots(string fullPath);
 
@@ -1322,6 +1324,32 @@ namespace WebApi.Services
             }
         }
 
+        public string[] GetGroupTasks()
+        {
+            log.Info("GetGroupTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    return GetGroupTasksArray();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetGroupTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetGroupTasks after locking");
+                }
+            }
+        }
+
         private string[] GetTasksArray()
         {
             List<string> strings = new List<string>();
@@ -1401,6 +1429,175 @@ namespace WebApi.Services
             }
         }
 
+        private void WriteAgents2TasksInputFile(StreamWriter resultStream)
+        {
+            StringBuilder outputString = new StringBuilder();
+
+            // Output agent specification
+            var accounts = _context.Accounts.Include(x => x.UserFunctions)/*.OrderBy(a => a.Email)*/.ToList();
+
+            foreach (var account in accounts)
+            {
+                if (account.Role != Role.Admin)
+                {
+                    // Exclude group agents (e.g. "Cleaner" task) - we will specify group agent in group task
+                    foreach (string gt in GetGroupTasksArray())
+                    {
+                        /* Write agent to task records  - See "Agent Specification" */
+                        StringBuilder lineWithoutTasks = new StringBuilder();
+                        // Agent name + cost
+                        lineWithoutTasks.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+
+                        // Agent family
+                        lineWithoutTasks.Append(account.Email);
+
+                        /* Tasks */
+                        StringBuilder taskString = new StringBuilder();
+                        for (int i = 0; i < account.UserFunctions.Count; i++)
+                        {
+                            /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 */
+                            //if (!account.UserFunctions[i].UserFunction.Equals(gt))
+                            {
+                                taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
+                            }
+                        }
+                        if(taskString.Length > 0)
+                        {
+                            outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
+                        }
+                    }
+                }
+            }
+            // Output group agent
+            WriteGroupTaskRecords(outputString);
+
+            resultStream.WriteLine(outputString.ToString());
+            resultStream.WriteLine("\n");
+
+        }
+
+        private void WriteGroupTaskRecords(StringBuilder outputString)
+        {
+            foreach(string tg in GetGroupTasksArray())
+            {
+                /* groupTaskAccount e.g. "Cleaner" */
+                var groupTaskAccounts = _context.Accounts
+                                  .Include(x => x.UserFunctions)
+                                  .Where(account => account.UserFunctions
+                                                           .Any(uf => uf.UserFunction.Equals(tg)))
+                                  .ToArray();
+
+                /* Sorted map - so the groups are in the order A/B/C etc*/
+                var map = new SortedDictionary<string, List<Account>>();
+
+                /* Build tree of groupAgent belonging to specific group (e.g. A/B/C or D)
+                 *  a
+                 *      -> asmith@gmail.com&1998-06-07
+                 *      -> rejkid@gmail.com&1961-03-24
+                 *      -> ismith@gmail.com&1961-07-02
+                 *  b
+                 *      -> awhite@gmail.com&1998-06-07
+                 *      -> iblack@gmail.com&1961-07-02
+                 *      -> iwhite@gmail.com&1961-07-02
+                 *      -> ablack@gmail.com&1998-06-07
+                 *  c
+                 *      -> mwalsh@gmail.com&2010-01-01
+                 *  d
+                 *      -> example@gmail.com&1961-03-24
+                 *      
+                 */
+                foreach (var account in groupTaskAccounts)
+                {
+                    /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
+                    var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
+                    if (map.ContainsKey(key))
+                    {
+                        var list = map.GetValueOrDefault(key);
+                        list.Add(account);
+                    }
+                    else
+                    {
+                        var l = new List<Account>();
+                        l.Add(account);
+                        map.Add(key, l);
+                    }
+                }
+                /*  Write Group Agent - see "Group Agent Specification" */
+                foreach (var keyValuePair in map)
+                {
+                    outputString.Append("g " + tg);
+                    foreach (var a in keyValuePair.Value)
+                    {
+                        outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
+                    }
+                    outputString.Append("\n");
+                }
+            }
+        }
+        
+        private void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
+        {
+            // Creates workbook
+            Workbook workbook = new Workbook(xlsmfullPath);
+
+            //Gets first worksheet
+            Worksheet worksheet = workbook.Worksheets[0];
+
+            // Print worksheet name
+            Console.WriteLine("Worksheet: " + worksheet.Name);
+
+            // Get number of rows and columns
+            int rows = worksheet.Cells.MaxDataRow;
+            int cols = worksheet.Cells.MaxDataColumn;
+            for (int row = 0; row <= rows; row++)
+            {
+                /* Write time slots - see "Timeslot Specification" - it is almost 1:1 to the input file */
+                StringBuilder sb = new StringBuilder();
+                sb.Append("t ");
+                for (int col = 0; col <= cols; col++)
+                {
+                    if (col == 0)
+                    {
+                        DateTime dateTime = (DateTime)worksheet.Cells[row, col].Value;
+                        sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
+                    } else
+                    {
+                        /* col == 1 */
+                        var functionsStr = (string)worksheet.Cells[row, col].Value;
+                        functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
+                        string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
+                        functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                        if (functions.Length <= 0)
+                            throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
+
+                        foreach (var functionStr in functions)
+                        {
+                            string fStr = functionStr.Trim();
+                            if (!GetTasksArray().Contains(fStr))
+                                throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, fStr));
+                        }
+                        sb.Append(String.Join(" ", functions));
+                    }
+                }
+                resultStream.WriteLine(sb.ToString());
+            }
+        }
+        private void Runa2tExeAsync(string inputfullPath, string outputfullResultPath)
+        {
+
+            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
+
+            var result = Cli.Wrap(a2tExePath)
+                            .WithArguments(new[] { inputfullPath, outputfullResultPath })
+                            .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
+                            .WithValidation(CommandResultValidation.None)
+                            .ExecuteAsync().GetAwaiter().GetResult()
+                            ;
+            log.Info("Result=" + result);
+            if (result.ExitCode != 0)
+                throw new AppException("Unknown exit code=" + result.ExitCode);
+        }
+
         private void CreateSchedulesFromOutput(string outputFile)
         {
             log.Info("CreateSchedulesFromOutput before locking");
@@ -1430,7 +1627,7 @@ namespace WebApi.Services
                                 string emailStr;
                                 string dobStr;
                                 var functionStr = string.Empty;
-                                if (lineComponents.Length >= 7)
+                                if (lineComponents.Length >= 7) // e.g. Cleaner
                                 {
                                     // 7 element record
                                     functionStr = lineComponents[6];
@@ -1440,7 +1637,7 @@ namespace WebApi.Services
                                 }
                                 else
                                 {
-                                    // 5 element record
+                                    // 5 element record e.g. Acolyte/MAS/EMHC/Reader1/Reader2/ ect
                                     functionStr = lineComponents[4];
                                     accountComponents = lineComponents[2].Split("&");
                                     emailStr = accountComponents[0];
@@ -1449,25 +1646,22 @@ namespace WebApi.Services
                                 accountComponents = lineComponents[2].Split("&");
                                 emailStr = accountComponents[0];
                                 dobStr = accountComponents[1].Split("_")[0];
-                                if(lineComponents.Length <= 5 && accountComponents[1].Split("_").Length == 2)
+                                if (lineComponents.Length <= 5 && accountComponents[1].Split("_").Length == 2)
                                 {
                                     // This is lead agent name - skip it
-                                    Console.WriteLine();
                                     continue;
                                 }
 
-                                //var groupStr = string.Empty;
-                                //if (accountComponents.Length > 2)
-                                //    groupStr = accountComponents[2];
                                 Account account = _context.Accounts.Include(x => x.Schedules).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
                                 Debug.Assert(account != null);
 
                                 Console.WriteLine($"{dateStr}");
+
                                 Schedule schedule = new Schedule
                                 {
                                     Date = dateStr,
                                     Email = emailStr,
-                                    ScheduleGroup = account.ScheduleGroup,
+                                    ScheduleGroup = account.UserFunctions.Where(uf => uf.UserFunction.Equals(functionStr)).FirstOrDefault().Group,
                                     UserFunction = functionStr,
                                     Dob = dobStr,
                                 };
@@ -1493,156 +1687,6 @@ namespace WebApi.Services
                     semaphoreObject.Release();
                     log.Info("CreateSchedulesFromOutput after locking");
                 }
-            }
-
-        }
-
-        private void Runa2tExeAsync(string inputfullPath, string outputfullResultPath)
-        {
-
-            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
-
-            var result = Cli.Wrap(a2tExePath)
-                            .WithArguments(new[] { inputfullPath, outputfullResultPath })
-                            .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
-                            .WithValidation(CommandResultValidation.None)
-                            .ExecuteAsync().GetAwaiter().GetResult()
-                            ;
-            log.Info("Result=" + result);
-            if (result.ExitCode != 0)
-                throw new AppException("Unknown exit code=" + result.ExitCode);
-        }
-        private void WriteAgents2TasksInputFile(StreamWriter resultStream)
-        {
-            StringBuilder outputString = new StringBuilder();
-
-            // Output agent specification
-            var accounts = _context.Accounts.Include(x => x.UserFunctions)/*.OrderBy(a => a.Email)*/.ToList();
-
-            foreach (var account in accounts)
-            {
-                if (account.Role != Role.Admin)
-                {
-                    outputString.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).
-                        Append(" ").Append("1").Append(" ");
-
-                    // Agent family
-                    outputString.Append(account.Email);
-
-                    outputString.Append(" ");
-                    bool functionFound = false;
-                    for (int i = 0; i < account.UserFunctions.Count; i++)
-                    {
-                        // We will specify group in agent group task
-                        foreach (string gt in GetGroupTasksArray())
-                        {
-                            if (!account.UserFunctions[i].UserFunction.Equals(gt))
-                            {
-                                outputString.Append(account.UserFunctions[i].UserFunction).Append(" ");
-                                functionFound = true;
-                            }
-                        }
-                    }
-                    if(!functionFound)
-                        outputString.Append("none");
-                    outputString.Append("\n");
-                }
-            }
-            // Output group agent
-            WriteGroupTaskRecords(outputString);
-
-            resultStream.WriteLine(outputString.ToString());
-            resultStream.WriteLine("\n");
-
-        }
-
-        private void WriteGroupTaskRecords(StringBuilder outputString)
-        {
-            foreach(string tg in GetGroupTasksArray())
-            {
-                var cleanerAccounts = _context.Accounts
-                                  .Include(x => x.UserFunctions)
-                                  .Where(account => account.UserFunctions
-                                                           .Any(uf => uf.UserFunction.Equals(tg)))
-                                  .ToArray();
-
-                /* Sorted map - so the groups are in the order A/B/C etc*/
-                var map = new SortedDictionary<string, List<Account>>();
-                foreach (var account in cleanerAccounts)
-                {
-
-                    if (map.ContainsKey(account.ScheduleGroup))
-                    {
-                        var list = map.GetValueOrDefault(account.ScheduleGroup);
-                        list.Add(account);
-                    }
-                    else
-                    {
-                        var l = new List<Account>();
-                        l.Add(account);
-                        map.Add(account.ScheduleGroup, l);
-                    }
-                }
-                foreach (var keyValuePair in map)
-                {
-                    outputString.Append("g " + tg);
-                    foreach (var a in keyValuePair.Value)
-                    {
-                        outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
-                    }
-                    outputString.Append("\n");
-                }
-            }
-        }
-        
-        private void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
-        {
-            // Creates workbook
-            Workbook workbook = new Workbook(xlsmfullPath);
-
-            //Gets first worksheet
-            Worksheet worksheet = workbook.Worksheets[0];
-
-            // Print worksheet name
-            Console.WriteLine("Worksheet: " + worksheet.Name);
-
-            // Get number of rows and columns
-            int rows = worksheet.Cells.MaxDataRow;
-            int cols = worksheet.Cells.MaxDataColumn;
-            for (int row = 0; row <= rows; row++)
-            {
-                StringBuilder sb = new StringBuilder();
-                sb.Append("t ");
-                for (int col = 0; col <= cols; col++)
-                {
-                    if (col == 0)
-                    {
-                        DateTime dateTime = (DateTime)worksheet.Cells[row, col].Value;
-                        sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
-                    } else
-                    {
-                        var functionsStr = (string)worksheet.Cells[row, col].Value;
-                        functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
-                        string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
-                        functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
-                        if (functions.Length <= 0)
-                            throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
-
-                        foreach (var functionStr in functions)
-                        {
-                            string fStr = functionStr.Trim();
-                            if (!GetTasksArray().Contains(fStr))
-                                throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, fStr));
-                        }
-
-
-
-
-
-                        sb.Append(worksheet.Cells[row, col].Value);
-                    }
-                }
-                resultStream.WriteLine(sb.ToString());
             }
         }
 
@@ -1694,10 +1738,8 @@ namespace WebApi.Services
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
 
-            List <UpdateUserFunctionRequest> functionRequests = new List<UpdateUserFunctionRequest>();
-            List<UpdateScheduleRequest> scheduleRequests = new List<UpdateScheduleRequest>();
+            List <Function> functions = new List<Function>();
             CreateRequest request = new CreateRequest();
-            StringBuilder group = new StringBuilder();
 
             log.Info("UploadAccounts before locking");
             semaphoreObject.Wait();
@@ -1710,13 +1752,13 @@ namespace WebApi.Services
                     for (int row = 0; row <= rows; row++)
                     {
                         // Create user request
-                        CreateUser(worksheet, cols, row, request, functionRequests, group);
+                        CreateUser(worksheet, cols, row, request, functions);
 
                         /* Check that the each group task (e.g. Cleaner) has some group specified (e.g. A or B etc) */
                         foreach (string gt in GetGroupTasksArray())
                         {
-                            bool isGroupTask = functionRequests.Any(fr => fr.UserFunction.Equals(gt));
-                            if (isGroupTask && group.ToString().Trim().Length == 0)
+                            Function func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
+                            if (func != null && func.Group.Trim().Length == 0 )
                             {
                                 throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
                             }
@@ -1734,7 +1776,6 @@ namespace WebApi.Services
                             account = _mapper.Map<Account>(request);
                             account.Created = DateTime.UtcNow;
                             account.Verified = DateTime.UtcNow;
-                            account.ScheduleGroup = group.ToString();
 
                             // hash password
                             account.PasswordHash = BC.HashPassword(request.Password);
@@ -1744,27 +1785,12 @@ namespace WebApi.Services
                             var result = _userManager.CreateAsync(account).GetAwaiter().GetResult();
                             Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
                         }
-                        group.Clear();
 
-                        // Initialize function request - multiple function per row
-                        foreach (var item in functionRequests)
-                        {
-                            var newFunction = _mapper.Map<Entities.Function>(item);
-                            var userFunction = account.UserFunctions.SingleOrDefault(x => x.UserFunction == item.UserFunction);
-                            if (userFunction == null)
-                                account.UserFunctions.Add(newFunction);
-                            _context.Accounts.Update(account);
-                        }
-                        functionRequests.Clear();
+                        // Initialize function - multiple function per row
+                        account.UserFunctions.AddRange(functions);
+                        _context.Accounts.Update(account);
 
-                        // Initialize functions - multiple functions per row
-                        foreach (var item in scheduleRequests)
-                        {
-                            var newSchedule = _mapper.Map<Schedule>(item);
-                            account.Schedules.Add(newSchedule);
-                            _context.Accounts.Update(account);
-                        }
-                        scheduleRequests.Clear();
+                        functions.Clear();
                     }
                     _context.SaveChanges();
                     transaction.Commit();
@@ -1786,10 +1812,9 @@ namespace WebApi.Services
         }
 
         private void CreateUser(Worksheet worksheet, int noOfCols, int row,
-            CreateRequest request, List<UpdateUserFunctionRequest> functionRequests,
-            StringBuilder group)
+            CreateRequest request, List<Function> functions)
         {
-
+            Function function = new Function();
             // Loop through each column in selected row
             for (int col = 0; col <= noOfCols; col++)
             {
@@ -1864,36 +1889,46 @@ namespace WebApi.Services
                                 throw new AppException(String.Format("Password can't be empty at row {0}", row + 1));
                         }
                         break;
-                    case 7:
+                    case 7: // Serve 8 as well - group string
                         {
-                            // Add functions to the user
-                            var functionsStr = (string)worksheet.Cells[row, col].Value;
-                            functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
-                            string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
-                            functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
-                            if (functions.Length <= 0)
+                            var groupStr = worksheet.Cells[row, col + 1].Value == null ? String.Empty : ((string)worksheet.Cells[row, col + 1].Value).Trim();
+                            // Add funcs to the user
+                            var functionsStr = worksheet.Cells[row, col].Value == null ? String.Empty : ((string)worksheet.Cells[row, col].Value).Trim();
+                            
+                            string[] funcs = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
+                            funcs = funcs.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                            if (funcs.Length <= 0)
                                 throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
 
-                            foreach (var functionStr in functions)
+                            /* There should be just one task (function e.g. "Cleaner") for group agent (account) 
+                             * Group: "A"
+                                    UserFunction : Cleaner
+
+                                    Group: ""
+                                    UserFunction : Acolyte
+
+                                    Group: ""
+                                    UserFunction : Acolyte
+                                    Group: ""
+                                    UserFunction : Reader1
+                                    Group: ""
+                                    UserFunction : EMHC
+                             */
+                            foreach (var functionStr in funcs)
                             {
-                                UpdateUserFunctionRequest req = new UpdateUserFunctionRequest
+                                Function f = new Function
                                 {
                                     UserFunction = functionStr.Trim(),
+                                    Group = groupStr // Group string for group task, empty string for the rest
                                 };
-                                if (!GetTasksArray().Contains(req.UserFunction))
-                                    throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, req.UserFunction));
+                                if (!GetTasksArray().Contains(f.UserFunction) && !GetGroupTasksArray().Contains(f.UserFunction))
+                                    throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, f.UserFunction));
 
-                                functionRequests.Add(req);
+                                functions.Add(f);
                             }
                         }
                         break;
                     case 8:
-                        {
-                            group.Clear();
-                            var localGroup = (string)worksheet.Cells[row, col].Value;
-                            localGroup = (localGroup == null) ? string.Empty : localGroup.Trim();
-                            group.Append(localGroup);
-                        }
                         break;
 
                     default:

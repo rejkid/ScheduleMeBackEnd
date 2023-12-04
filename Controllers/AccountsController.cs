@@ -395,6 +395,13 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpGet("group-tasks")]
+        public ActionResult<string[]> GetGroupTasks()
+        {
+            return Ok(_accountService.GetGroupTasks());
+        }
+
+        [Authorize]
         [HttpPost("upload-accounts"), DisableRequestSizeLimit]
         public ActionResult UploadAccounts()
         {

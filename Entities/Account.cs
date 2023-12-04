@@ -28,8 +28,6 @@ namespace WebApi.Entities
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
 
-        public string ScheduleGroup { get; set; }
-
         // Notification section
         public bool NotifyWeekBefore { get; set; } = true;
         public bool NotifyThreeDaysBefore { get; set; } = true;
