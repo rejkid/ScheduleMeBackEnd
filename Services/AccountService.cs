@@ -1528,6 +1528,7 @@ namespace WebApi.Services
                     outputString.Append("g " + tg);
                     foreach (var a in keyValuePair.Value)
                     {
+                        // Add agent name (email + dob)
                         outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
                     }
                     outputString.Append("\n");
@@ -1764,7 +1765,7 @@ namespace WebApi.Services
                             }
                         }
 
-                        // Schedule and functions have been red in
+                        // User and functions have been red in
                         request.Role = Role.User.ToString();
 
                         Account account = _context.Accounts.SingleOrDefault(x => x.Email == request.Email && x.DOB == request.Dob);
@@ -1901,7 +1902,8 @@ namespace WebApi.Services
                                 throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
 
                             /* There should be just one task (function e.g. "Cleaner") for group agent (account) 
-                             * Group: "A"
+                              
+                                    Group: "A"
                                     UserFunction : Cleaner
 
                                     Group: ""
