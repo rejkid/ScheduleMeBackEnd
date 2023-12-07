@@ -9,5 +9,6 @@ namespace WebApi.Models.Accounts
     {
         [Required]
         public string UserFunction { get; set; }
+        public string Group { get; set; }
     }
 }
