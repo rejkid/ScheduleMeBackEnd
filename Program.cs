@@ -51,13 +51,13 @@ namespace WebApi
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>()
-                    .UseContentRoot(Directory.GetCurrentDirectory());
+                    .UseContentRoot(Directory.GetCurrentDirectory())
                     //.UseWebRoot("wwwroot");
                     //.UseUrls("https://192.168.0.19:4000");
                     //.UseUrls("http://192.168.0.19:4000");
                     //.UseUrls("http://localhost:4000");
                     //.UseUrls("https://webapijanusz.azurewebsites.net:4000");
-                    //.UseUrls("https://localhost:5001");
+                    .UseUrls("https://localhost:5001");
                     /*
                      * 1) dotnet dev-certs https --trust
                      * 2) dotnet dev-certs https --clean
