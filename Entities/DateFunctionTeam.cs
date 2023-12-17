@@ -7,13 +7,13 @@ namespace WebApi.Entities
     {
         public DateFunctionTeam(string date, string function)
         {
-            Function = function;
+            UserFunction = function;
             Date = date;
             Users = new List<User>(); 
         }
         public int Id { get; set; }
         public string Date;
-        public string Function { get; set; }
+        public string UserFunction { get; set; }
         public List<User> Users { get; set; }
     }
 }

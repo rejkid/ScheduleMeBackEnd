@@ -723,7 +723,7 @@ namespace WebApi.Services
                             // Find existing team for the date and function
                             foreach (var item in response.DateFunctionTeams)
                             {
-                                if (schedule.Date == item.Date && item.Function == schedule.UserFunction)
+                                if (schedule.Date == item.Date && item.UserFunction == schedule.UserFunction)
                                 {
                                     team = item;
                                     break;
@@ -1569,13 +1569,13 @@ namespace WebApi.Services
                         string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
                         functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
                         if (functions.Length <= 0)
-                            throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
+                            throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
 
                         foreach (var functionStr in functions)
                         {
                             string fStr = functionStr.Trim();
                             if (!GetTasksArray().Contains(fStr))
-                                throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, fStr));
+                                throw new AppException(String.Format("User UserFunction '{1}' invalid at row {0}", row + 1, fStr));
                         }
                         sb.Append(String.Join(" ", functions));
                     }
@@ -1899,7 +1899,7 @@ namespace WebApi.Services
                             string[] funcs = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
                             funcs = funcs.Where(x => !string.IsNullOrEmpty(x)).ToArray();
                             if (funcs.Length <= 0)
-                                throw new AppException(String.Format("There must be at least one Function defined at row {0}", row + 1));
+                                throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
 
                             /* There should be just one task (function e.g. "Cleaner") for group agent (account) 
                               
@@ -1924,7 +1924,7 @@ namespace WebApi.Services
                                     Group = groupStr // Group string for group task, empty string for the rest
                                 };
                                 if (!GetTasksArray().Contains(f.UserFunction) && !GetGroupTasksArray().Contains(f.UserFunction))
-                                    throw new AppException(String.Format("User Function '{1}' invalid at row {0}", row + 1, f.UserFunction));
+                                    throw new AppException(String.Format("User UserFunction '{1}' invalid at row {0}", row + 1, f.UserFunction));
 
                                 functions.Add(f);
                             }

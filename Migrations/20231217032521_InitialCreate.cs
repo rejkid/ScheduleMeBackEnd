@@ -43,7 +43,6 @@ namespace WebApi.Migrations
                     DOB = table.Column<string>(type: "TEXT", nullable: true),
                     Created = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Updated = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    ScheduleGroup = table.Column<string>(type: "TEXT", nullable: true),
                     NotifyWeekBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     NotifyThreeDaysBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),

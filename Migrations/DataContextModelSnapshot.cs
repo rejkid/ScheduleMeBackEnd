@@ -220,9 +220,6 @@ namespace WebApi.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ScheduleGroup")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("TEXT");
 
@@ -264,6 +261,9 @@ namespace WebApi.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("AccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Group")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("UserFunction")
