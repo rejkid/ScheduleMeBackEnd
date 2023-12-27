@@ -51,6 +51,7 @@ using Aspose.Cells.Drawing;
 using System.Net.Mail;
 using static System.Net.Mime.MediaTypeNames;
 
+
 namespace WebApi.Services
 {
     public interface IAccountService
@@ -1441,7 +1442,7 @@ namespace WebApi.Services
                 if (account.Role != Role.Admin)
                 {
                     // Exclude group agents (e.g. "Cleaner" task) - we will specify group agent in group task
-                    foreach (string gt in GetGroupTasksArray())
+                    //foreach (string gt in GetGroupTasksArray())
                     {
                         /* Write agent to task records  - See "Agent Specification" */
                         StringBuilder lineWithoutTasks = new StringBuilder();
@@ -1550,6 +1551,27 @@ namespace WebApi.Services
             // Get number of rows and columns
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
+
+            /* Sort all timeslots by date 
+             */
+            object[][] timeslots = new object[rows+1][];
+            for (int row = 0; row <= rows; row++)
+            {
+                timeslots[row] = new object[cols+1];
+                for (int col = 0; col <= cols; col++)
+                {
+                    timeslots[row][col] = worksheet.Cells[row, col].Value;
+                }
+            }
+            var sortedByDateVal = timeslots.OrderBy(y =>
+            {
+                var a = y[0];
+                var b = y[1];
+                return y[0];
+            }).ToArray();
+
+            /* Output timeslots to the parameter 'resultStream'
+            */
             for (int row = 0; row <= rows; row++)
             {
                 /* Write time slots - see "Timeslot Specification" - it is almost 1:1 to the input file */
@@ -1559,12 +1581,12 @@ namespace WebApi.Services
                 {
                     if (col == 0)
                     {
-                        DateTime dateTime = (DateTime)worksheet.Cells[row, col].Value;
+                        DateTime dateTime = (DateTime)sortedByDateVal[row][col];
                         sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
                     } else
                     {
                         /* col == 1 */
-                        var functionsStr = (string)worksheet.Cells[row, col].Value;
+                        var functionsStr = (string)sortedByDateVal[row][col];
                         functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
                         string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
                         functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
@@ -1575,7 +1597,7 @@ namespace WebApi.Services
                         {
                             string fStr = functionStr.Trim();
                             if (!GetTasksArray().Contains(fStr))
-                                throw new AppException(String.Format("User UserFunction '{1}' invalid at row {0}", row + 1, fStr));
+                                throw new AppException(String.Format("UserFunction '{1}' invalid at row {0}", row + 1, fStr));
                         }
                         sb.Append(String.Join(" ", functions));
                     }
