@@ -1366,6 +1366,7 @@ namespace WebApi.Services
                         {
                             List<ScheduleDateTime> dateTimeList = GetAllDatesWithoutLock().ScheduleDateTimes;
                             List<ScheduleDateTime> sortedList = dateTimeList.OrderBy(o => o.Date).ToList();
+                            int index = 0;
                             foreach (ScheduleDateTime dateTime in sortedList)
                             {
                                 List<DateFunctionTeam> dateFunctionTeams = GetTeamsByFunctionForDateWithoutLock(dateTime.Date).DateFunctionTeams;
@@ -1415,12 +1416,12 @@ namespace WebApi.Services
                                         cell = new iText.Layout.Element.Cell(1, 1);
                                         cell.Add(new Paragraph(user.ScheduleGroup));
                                         table.AddCell(cell);
-
-                                        table.StartNewRow();
                                     }
                                     document.Add(table);
                                 }
-                                document.Add(new AreaBreak());
+                                index++;
+                                if(index < sortedList.Count)
+                                    document.Add(new AreaBreak());
                             }
                             document.Close();
                             stream.Position = 0;
