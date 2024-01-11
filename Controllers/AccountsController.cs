@@ -1,4 +1,8 @@
 ﻿using AutoMapper;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using log4net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -468,6 +472,21 @@ namespace WebApi.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [Authorize]
+        [HttpGet("download-schedules-file"), DisableRequestSizeLimit]
+        public ActionResult DownloadSchedules()
+        {
+            try
+            {
+                Byte[] bytes = _accountService.DownloadSchedules();
+                return File(bytes, "application/pdf");
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [Authorize]
         [HttpDelete("delete-all-user-accounts")]
         public ActionResult<IEnumerable<AccountResponse>> DeleteAllUserAccounts()

@@ -41,7 +41,6 @@ using Aspose.Cells.Timelines;
 using System.Collections;
 using System.Xml;
 using Org.BouncyCastle.Asn1.Ocsp;
-using static Org.BouncyCastle.Bcpg.Attr.ImageAttrib;
 using System.Globalization;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Components.Forms;
@@ -50,7 +49,16 @@ using CliWrap;
 using Aspose.Cells.Drawing;
 using System.Net.Mail;
 using static System.Net.Mime.MediaTypeNames;
-
+using Microsoft.CodeAnalysis.Elfie.Diagnostics;
+using iText.Kernel.Pdf;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Layout;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Table = iText.Layout.Element.Table;
+using iText.Kernel.Colors;
+using iText.IO.Font;
+using iText.Kernel.Font;
 
 namespace WebApi.Services
 {
@@ -94,6 +102,8 @@ namespace WebApi.Services
 
         public void UploadAccounts(string path);
         void UploadTimeSlots(string fullPath);
+        public Byte[] DownloadSchedules();
+
 
         public IEnumerable<AccountResponse> DeleteAllUserAccounts();
         public bool GetAutoEmail();
@@ -652,33 +662,7 @@ namespace WebApi.Services
             semaphoreObject.Wait();
             try
             {
-                ScheduleDateTimeResponse response = new ScheduleDateTimeResponse();
-                response.ScheduleDateTimes = new List<ScheduleDateTime>();
-
-                var accounts = _context.Accounts;
-                var accountAll = _context.Accounts.Include(x => x.Schedules).ToList();
-                foreach (var item in accountAll)
-                {
-                    foreach (var schedule in item.Schedules)
-                    {
-                        Boolean found = false;
-                        foreach (var dt in response.ScheduleDateTimes)
-                        {
-                            if (dt.Date == schedule.Date)
-                            {
-                                found = true; // DateTime already exists - break the for loop
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            ScheduleDateTime sdt = new ScheduleDateTime();
-                            sdt.Date = schedule.Date;
-                            response.ScheduleDateTimes.Add(sdt);
-                        }
-                    }
-                }
-                return response;
+                return GetAllDatesWithoutLock();
             }
             catch (Exception ex)
             {
@@ -693,6 +677,37 @@ namespace WebApi.Services
             }
         }
 
+        private ScheduleDateTimeResponse GetAllDatesWithoutLock()
+        {
+            ScheduleDateTimeResponse response = new ScheduleDateTimeResponse();
+            response.ScheduleDateTimes = new List<ScheduleDateTime>();
+
+            var accounts = _context.Accounts;
+            var accountAll = _context.Accounts.Include(x => x.Schedules).ToList();
+            foreach (var item in accountAll)
+            {
+                foreach (var schedule in item.Schedules)
+                {
+                    Boolean found = false;
+                    foreach (var dt in response.ScheduleDateTimes)
+                    {
+                        if (dt.Date == schedule.Date)
+                        {
+                            found = true; // DateTime already exists - break the for loop
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        ScheduleDateTime sdt = new ScheduleDateTime();
+                        sdt.Date = schedule.Date;
+                        response.ScheduleDateTimes.Add(sdt);
+                    }
+                }
+            }
+            return response;
+        }
+
         public DateFunctionTeamResponse GetTeamsByFunctionForDate(string dateStr)
         {
             log.Info("GetTeamsByFunctionForDate before locking");
@@ -700,51 +715,7 @@ namespace WebApi.Services
 
             try
             {
-                var accountAll = _context.Accounts.Include(x => x.Schedules).ToList();
-                var dateTime = dateStr;
-
-                var offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
-
-                log.InfoFormat("Date requested string {0} parsed value {1} offset {2}",
-                                dateStr,
-                                dateTime,
-                                offset);
-
-                DateFunctionTeamResponse response = new DateFunctionTeamResponse();
-                response.DateFunctionTeams = new List<DateFunctionTeam>();
-
-                foreach (var account in accountAll)
-                {
-                    foreach (var schedule in account.Schedules)
-                    {
-                        DateFunctionTeam team = null;
-
-                        if (schedule.Date == dateTime)
-                        {
-                            // Find existing team for the date and function
-                            foreach (var item in response.DateFunctionTeams)
-                            {
-                                if (schedule.Date == item.Date && item.UserFunction == schedule.UserFunction)
-                                {
-                                    team = item;
-                                    break;
-                                }
-                            }
-                            if (team == null)
-                            {
-                                team = new DateFunctionTeam(dateTime, schedule.UserFunction);
-                                response.DateFunctionTeams.Add(team);
-                            }
-
-                            User user = _mapper.Map<User>(account);
-                            user.Function = schedule.UserFunction;
-                            user.UserAvailability = schedule.UserAvailability;
-                            user.ScheduleGroup = schedule.ScheduleGroup;
-                            team.Users.Add(user);
-                        }
-                    }
-                }
-                return response;
+                return GetTeamsByFunctionForDateWithoutLock(dateStr);
             }
             catch (Exception ex)
             {
@@ -758,6 +729,56 @@ namespace WebApi.Services
                 log.Info("GetTeamsByFunctionForDate after locking");
             }
         }
+
+        private DateFunctionTeamResponse GetTeamsByFunctionForDateWithoutLock(string dateStr)
+        {
+            var accountAll = _context.Accounts.Include(x => x.Schedules).ToList();
+            var dateTime = dateStr;
+
+            var offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+
+            log.InfoFormat("Date requested string {0} parsed value {1} offset {2}",
+                            dateStr,
+                            dateTime,
+                            offset);
+
+            DateFunctionTeamResponse response = new DateFunctionTeamResponse();
+            response.DateFunctionTeams = new List<DateFunctionTeam>();
+
+            foreach (var account in accountAll)
+            {
+                foreach (var schedule in account.Schedules)
+                {
+                    DateFunctionTeam team = null;
+
+                    if (schedule.Date == dateTime)
+                    {
+                        // Find existing team for the date and function
+                        foreach (var item in response.DateFunctionTeams)
+                        {
+                            if (schedule.Date == item.Date && item.UserFunction == schedule.UserFunction)
+                            {
+                                team = item;
+                                break;
+                            }
+                        }
+                        if (team == null)
+                        {
+                            team = new DateFunctionTeam(dateTime, schedule.UserFunction);
+                            response.DateFunctionTeams.Add(team);
+                        }
+
+                        User user = _mapper.Map<User>(account);
+                        user.Function = schedule.UserFunction;
+                        user.UserAvailability = schedule.UserAvailability;
+                        user.ScheduleGroup = schedule.ScheduleGroup;
+                        team.Users.Add(user);
+                    }
+                }
+            }
+            return response;
+        }
+
         public AccountResponse GetById(string id)
         {
             log.Info("GetById before locking");
@@ -1324,7 +1345,107 @@ namespace WebApi.Services
                 }
             }
         }
+        public Byte[] DownloadSchedules()
+        {
+            log.Info("DownloadSchedules before locking");
+            semaphoreObject.Wait();
 
+            using (MemoryStream memory = new MemoryStream())
+            {
+                using (BufferedStream stream = new BufferedStream(memory))
+                {
+                    // Initialize document object
+                    PdfWriter writer = new PdfWriter(stream);
+                    PdfDocument pdf = new PdfDocument(writer);
+                    writer.SetCloseStream(false);
+                    Document document = new Document(pdf);
+
+                    using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+                    {
+                        try
+                        {
+                            List<ScheduleDateTime> dateTimeList = GetAllDatesWithoutLock().ScheduleDateTimes;
+                            List<ScheduleDateTime> sortedList = dateTimeList.OrderBy(o => o.Date).ToList();
+                            foreach (ScheduleDateTime dateTime in sortedList)
+                            {
+                                List<DateFunctionTeam> dateFunctionTeams = GetTeamsByFunctionForDateWithoutLock(dateTime.Date).DateFunctionTeams;
+                                Paragraph date = new Paragraph(dateTime.Date)
+                                       .SetTextAlignment(TextAlignment.CENTER)
+                                       .SetFontSize(20).SetMultipliedLeading(1.0f);
+                                document.Add(date);
+                                foreach (DateFunctionTeam team in dateFunctionTeams)
+                                {
+                                    Paragraph header = new Paragraph(team.UserFunction)
+                                           .SetTextAlignment(TextAlignment.LEFT)
+                                           .SetFontSize(15).SetMultipliedLeading(1.0f);
+                                    document.Add(header);
+                                    Table table = new Table(UnitValue.CreatePercentArray(5)).UseAllAvailableWidth();
+                                    table.SetKeepTogether(true);
+                                    table.SetMarginTop(10);
+                                    
+
+                                    var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.TIMES_BOLD);
+                                    var color = new DeviceRgb(210, 210, 210);
+                                    iText.Layout.Style style = new iText.Layout.Style()
+                                        .SetBackgroundColor(new DeviceRgb(210, 210, 210))
+                                        .SetFont(boldFont);
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("Duty"));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("FirstName"));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("LastName"));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("E-mail"));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("Team"));
+                                    foreach (User user in team.Users)
+                                    {
+                                        iText.Layout.Element.Cell cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(user.Function));
+                                        table.AddCell(cell);
+
+                                        cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(user.FirstName));
+                                        table.AddCell(cell);
+
+                                        cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(user.LastName));
+                                        table.AddCell(cell);
+
+                                        cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(user.Email));
+                                        table.AddCell(cell);
+
+                                        cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(user.ScheduleGroup));
+                                        table.AddCell(cell);
+
+                                        table.StartNewRow();
+                                    }
+                                    document.Add(table);
+                                }
+                                document.Add(new AreaBreak());
+                            }
+                            document.Close();
+                            stream.Position = 0;
+
+                            MemoryStream memoryPaganated = new MemoryStream();
+                            ManipulatePdf(memory, memoryPaganated);
+
+                            return memoryPaganated.GetBuffer();
+                        }
+                        catch (Exception ex)
+                        {
+                            transaction.Rollback();
+                            Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                            log.Error(Thread.CurrentThread.Name + "Error occurred in DownloadSchedules:", ex);
+                            throw;
+                        }
+                        finally
+                        {
+                            semaphoreObject.Release();
+                            log.Info("DownloadSchedules after locking");
+                        }
+                    }
+                }
+            }
+        }
         public string[] GetGroupTasks()
         {
             log.Info("GetGroupTasks before locking");
@@ -1349,6 +1470,22 @@ namespace WebApi.Services
                     log.Info("GetGroupTasks after locking");
                 }
             }
+        }
+
+        protected void ManipulatePdf(MemoryStream src, MemoryStream dest)
+        {
+            PdfDocument pdfDoc = new PdfDocument(new PdfReader(src), new PdfWriter(dest));
+            Document doc = new Document(pdfDoc);
+
+            int numberOfPages = pdfDoc.GetNumberOfPages();
+            for (int i = 1; i <= numberOfPages; i++)
+            {
+                // Write aligned text to the specified by parameters point
+                doc.ShowTextAligned(new Paragraph("Page " + i + " of " + numberOfPages),
+                        559, 806, i, TextAlignment.RIGHT, VerticalAlignment.TOP, 0);
+            }
+
+            doc.Close();
         }
 
         private string[] GetTasksArray()
