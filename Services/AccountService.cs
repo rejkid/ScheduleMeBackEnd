@@ -59,6 +59,7 @@ using Table = iText.Layout.Element.Table;
 using iText.Kernel.Colors;
 using iText.IO.Font;
 using iText.Kernel.Font;
+using Text = iText.Layout.Element.Text;
 
 namespace WebApi.Services
 {
@@ -1159,9 +1160,11 @@ namespace WebApi.Services
                         Schedule schedule = new Schedule();
                         schedule.Date = poolElement.Date;
                         schedule.UserFunction = poolElement.UserFunction;
+                        schedule.Email = account.Email;
+                        schedule.Dob = account.DOB;
                         schedule.UserAvailability = scheduleReq.UserAvailability;
                         schedule.Required = scheduleReq.Required;
-                        schedule.ScheduleGroup = scheduleReq.ScheduleGroup;
+                        schedule.ScheduleGroup = scheduleReq.ScheduleGroup == null ? "" : scheduleReq.ScheduleGroup;
 
 
                         account.Schedules.Add(schedule);
@@ -1374,7 +1377,9 @@ namespace WebApi.Services
                                        .SetTextAlignment(TextAlignment.CENTER)
                                        .SetFontSize(20).SetMultipliedLeading(1.0f);
                                 document.Add(date);
-                                foreach (DateFunctionTeam team in dateFunctionTeams)
+
+                                List<DateFunctionTeam> sortedDateFunctionTeams = dateFunctionTeams.OrderBy(o => o.UserFunction).ToList();
+                                foreach (DateFunctionTeam team in sortedDateFunctionTeams)
                                 {
                                     Paragraph header = new Paragraph(team.UserFunction)
                                            .SetTextAlignment(TextAlignment.LEFT)
@@ -1390,31 +1395,32 @@ namespace WebApi.Services
                                     iText.Layout.Style style = new iText.Layout.Style()
                                         .SetBackgroundColor(new DeviceRgb(210, 210, 210))
                                         .SetFont(boldFont);
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("Duty"));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("FirstName"));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("LastName"));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("E-mail"));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add("Team"));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Duty")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("FirstName")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("LastName")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("E-mail")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Team")));
+
                                     foreach (User user in team.Users)
                                     {
                                         iText.Layout.Element.Cell cell = new iText.Layout.Element.Cell(1, 1);
-                                        cell.Add(new Paragraph(user.Function));
+                                        cell.Add(new Paragraph(new Text(user.Function)));
                                         table.AddCell(cell);
 
                                         cell = new iText.Layout.Element.Cell(1, 1);
-                                        cell.Add(new Paragraph(user.FirstName));
+                                        cell.Add(new Paragraph(new Text(user.FirstName)));
                                         table.AddCell(cell);
 
                                         cell = new iText.Layout.Element.Cell(1, 1);
-                                        cell.Add(new Paragraph(user.LastName));
+                                        cell.Add(new Paragraph(new Text(user.LastName)));
                                         table.AddCell(cell);
 
                                         cell = new iText.Layout.Element.Cell(1, 1);
-                                        cell.Add(new Paragraph(user.Email));
+                                        cell.Add(new Paragraph(new Text(user.Email)));
                                         table.AddCell(cell);
 
                                         cell = new iText.Layout.Element.Cell(1, 1);
-                                        cell.Add(new Paragraph(user.ScheduleGroup));
+                                        cell.Add(new Paragraph(new Text(user.ScheduleGroup)));
                                         table.AddCell(cell);
                                     }
                                     document.Add(table);
