@@ -91,7 +91,7 @@ namespace WebApi.Services
         public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq);
 
-        public SchedulePoolElementsResponse GetAvailableSchedules(string id);
+        public SchedulePoolElementsResponse GetAvailablePoolElementsForAccount(string id);
         public SchedulePoolElementsResponse GetAllAvailablePoolElements();
 
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
@@ -1215,10 +1215,10 @@ namespace WebApi.Services
             return response;
         }
 
-        public SchedulePoolElementsResponse GetAvailableSchedules(string id)
+        public SchedulePoolElementsResponse GetAvailablePoolElementsForAccount(string id)
         {
             SchedulePoolElementsResponse response = new SchedulePoolElementsResponse();
-            log.Info("GetAvailableSchedules before locking");
+            log.Info("GetAvailablePoolElementsForAccount before locking");
             semaphoreObject.Wait();
             try
             {
@@ -1241,7 +1241,7 @@ namespace WebApi.Services
             finally
             {
                 semaphoreObject.Release();
-                log.Info("GetAvailableSchedules after locking");
+                log.Info("GetAvailablePoolElementsForAccount after locking");
             }
             return response;
         }

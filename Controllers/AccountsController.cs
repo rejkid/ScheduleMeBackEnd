@@ -355,18 +355,18 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
-        [HttpGet("available_schedules/{id}")]
-        public ActionResult<SchedulePoolElementsResponse> GetAvailableSchedules(string id)
-        {
-            var dates = _accountService.GetAvailableSchedules(id);
-            return Ok(dates);
-        }
-
-        [Authorize]
         [HttpPost("remove-pool-element/{id}/{email}/{userFunction}")]
         public ActionResult<SchedulePoolElementsResponse> RemovePoolElement(int id, string email, string userFunction)
         {
             var dates = _accountService.RemoveFromPool(id, email, userFunction);
+            return Ok(dates);
+        }
+
+        [Authorize]
+        [HttpGet("available_pool-elements-for-account/{id}")]
+        public ActionResult<SchedulePoolElementsResponse> GetAvailablePoolElementsForAccount(string id)
+        {
+            var dates = _accountService.GetAvailablePoolElementsForAccount(id);
             return Ok(dates);
         }
 
