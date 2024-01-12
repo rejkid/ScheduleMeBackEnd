@@ -371,10 +371,10 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
-        [HttpGet("all-available_schedules")]
-        public ActionResult<SchedulePoolElementsResponse> GetAllAvailableSchedules(int id)
+        [HttpGet("all-available-pool-elements")]
+        public ActionResult<SchedulePoolElementsResponse> GetAllAvailablePoolElements()
         {
-            var dates = _accountService.GetAllAvailableSchedules();
+            var dates = _accountService.GetAllAvailablePoolElements();
             return Ok(dates);
         }
 
