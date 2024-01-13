@@ -1373,10 +1373,16 @@ namespace WebApi.Services
                             foreach (ScheduleDateTime dateTime in sortedList)
                             {
                                 List<DateFunctionTeam> dateFunctionTeams = GetTeamsByFunctionForDateWithoutLock(dateTime.Date).DateFunctionTeams;
-                                Paragraph date = new Paragraph(dateTime.Date)
+                                Paragraph dateParagraph = new Paragraph(dateTime.Date)
                                        .SetTextAlignment(TextAlignment.CENTER)
                                        .SetFontSize(20).SetMultipliedLeading(1.0f);
-                                document.Add(date);
+                                document.Add(dateParagraph);
+
+                                var date = DateTime.ParseExact(dateTime.Date, DATE_TIME_FORMAT, CultureInfo.InvariantCulture);
+                                Paragraph day = new Paragraph(date.DayOfWeek.ToString())
+                                       .SetTextAlignment(TextAlignment.CENTER)
+                                       .SetFontSize(20).SetMultipliedLeading(1.0f);
+                                document.Add(day);
 
                                 List<DateFunctionTeam> sortedDateFunctionTeams = dateFunctionTeams.OrderBy(o => o.UserFunction).ToList();
                                 foreach (DateFunctionTeam team in sortedDateFunctionTeams)
