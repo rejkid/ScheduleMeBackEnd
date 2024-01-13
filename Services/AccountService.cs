@@ -1762,7 +1762,41 @@ namespace WebApi.Services
                             ;
             log.Info("Result=" + result);
             if (result.ExitCode != 0)
-                throw new AppException("Unknown exit code=" + result.ExitCode);
+            {
+                switch (result.ExitCode)
+                {
+                    case 3:
+                        throw new AppException("Bad command line parameters");
+                    case 10:
+                        throw new AppException("Timeslot badly formatted");
+                    case 11:
+                        throw new AppException("Timeslots out of order");
+                    case 12:
+                        throw new AppException("Duplicate agent name");
+                    case 13:
+                        throw new AppException("Duplicate timeslot");
+                    case 14:
+                        throw new AppException("Cannot open output file");
+                    case 15:
+                        throw new AppException("Cannot open input file");
+                    case 16:
+                        throw new AppException("Unit test failed");
+                    case 17:
+                        throw new AppException("Timeslot conversion overflow");
+                    case 20:
+                        throw new AppException("Cannot parse timeslot timestamp");
+                    case 21:
+                        throw new AppException("Cannot open log file");
+                    case 22:
+                        throw new AppException("No timeslots specified");
+                    case 23:
+                        throw new AppException("Duplicate group member");
+                    case 25:
+                        throw new AppException("Duplicate group member");
+                    default:
+                        throw new AppException("Unspecified group member");
+                }
+            }
         }
 
         private void CreateSchedulesFromOutput(string outputFile)
@@ -2059,14 +2093,25 @@ namespace WebApi.Services
                     case 7: // Serve 8 as well - group string
                         {
                             var groupStr = worksheet.Cells[row, col + 1].Value == null ? String.Empty : ((string)worksheet.Cells[row, col + 1].Value).Trim();
-                            // Add funcs to the user
-                            var functionsStr = worksheet.Cells[row, col].Value == null ? String.Empty : ((string)worksheet.Cells[row, col].Value).Trim();
+                            // Add tasks to the user
+                            var tasksStr = worksheet.Cells[row, col].Value == null ? String.Empty : ((string)worksheet.Cells[row, col].Value).Trim();
                             
-                            string[] funcs = functionsStr == string.Empty ? new string[0] : functionsStr.Split(' ');
-                            funcs = funcs.Where(x => !string.IsNullOrEmpty(x)).ToArray();
-                            if (funcs.Length <= 0)
+                            string[] tasks = tasksStr == string.Empty ? new string[0] : tasksStr.Split(' ');
+                            tasks = tasks.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                            if (tasks.Length <= 0)
                                 throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
 
+                            if(groupStr.Length > 0)
+                            {
+                                // We are defining user for a group task
+                                if (tasks.Length == 1 && !GetGroupTasksArray().Contains(tasks[0]))
+                                {
+                                    throw new AppException(String.Format("Group task '{1}' must be configured in 'GroupTasks' at row {0}", row + 1, tasks[0]));
+                                } else if (tasks.Length > 1)
+                                {
+                                    throw new AppException(String.Format("There must be only one task type defined for a group name {1} at row {0}", row + 1, groupStr));
+                                }
+                            }
                             /* There should be just one task (function e.g. "Cleaner") for group agent (account) 
                               
                                     Group: "A"
@@ -2082,7 +2127,7 @@ namespace WebApi.Services
                                     Group: ""
                                     UserFunction : EMHC
                              */
-                            foreach (var functionStr in funcs)
+                            foreach (var functionStr in tasks)
                             {
                                 Function f = new Function
                                 {
