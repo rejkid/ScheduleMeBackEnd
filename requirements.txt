@@ -5,10 +5,10 @@ The input consists of three sections in an input file:
 
 Agents can perform the following tasks: Cleaner Acolyte MAS EMHC Reader2 Reader1 - multiple tasks can be assigned to an agent.
  
-1) If the agent can do "Cleaner" task, he/she will belong to one group (A or B or C etc).
-A group is a set of agents working together on a particular task; in this case the "Cleaner" task. Groups perform their duties on a weekly basis (as per time slot assignments). For example, group "A" does cleaning on one Saturday, then group B does the following Saturday. This continues with the groups until all groups have done their duties once and then the process of assigning starts from the beginning. Groups are never broken - they consist always of the same members.
+1) If the agent can do group task (Cleaner/Choir), he/she will belong to one group (A or B or C etc).
+A group is a set of agents working together on a particular task; e.g Cleaner/Choir task. Groups perform their duties on a weekly basis (as per time slot assignments). For example, group "A" does cleaning on one Saturday, then group B does the following Saturday. This continues with the groups until all groups have done their duties once and then the process of assigning starts from the beginning. Groups are never broken - they consist always of the same members.
  
-2) If the agent can do any other task than "Cleaner", he/she will be part of the family that do those tasks preferably together (as a family).
+2) If the agent can do any other task than group task, he/she will be part of the family that do those tasks preferably together (as a family).
 They perform their duties based on the time slots. The assignment of agents to a time slot should follow the below rules(prioritized according to the list order):
 	a) assigning Agent A to a task with the name T prevents them from being assigned to any other task for the same or next day
 	b) assigning family members to the same time slot is preferred - if the family members are exhausted, then the other agents should be used
