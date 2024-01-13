@@ -1432,10 +1432,10 @@ namespace WebApi.Services
                             document.Close();
                             stream.Position = 0;
 
-                            MemoryStream memoryPaganated = new MemoryStream();
-                            ManipulatePdf(memory, memoryPaganated);
+                            MemoryStream memoryPaginated = new MemoryStream();
+                            ManipulatePdf(memory, memoryPaginated);
 
-                            return memoryPaganated.GetBuffer();
+                            return memoryPaginated.GetBuffer();
                         }
                         catch (Exception ex)
                         {
@@ -1740,7 +1740,8 @@ namespace WebApi.Services
                         foreach (var functionStr in functions)
                         {
                             string fStr = functionStr.Trim();
-                            if (!GetTasksArray().Contains(fStr))
+                            // Function (task) must be either task or group task
+                            if (!GetTasksArray().Contains(fStr) && !GetGroupTasksArray().Contains(fStr))
                                 throw new AppException(String.Format("UserFunction '{1}' invalid at row {0}", row + 1, fStr));
                         }
                         sb.Append(String.Join(" ", functions));
