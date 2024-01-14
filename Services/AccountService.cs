@@ -1602,31 +1602,30 @@ namespace WebApi.Services
             {
                 if (account.Role != Role.Admin)
                 {
-                    // Exclude group agents (e.g. "Cleaner" task) - we will specify group agent in group task
-                    //foreach (string gt in GetGroupTasksArray())
+                    /* Write agent to task records  - See "Agent Specification" */
+                    StringBuilder lineWithoutTasks = new StringBuilder();
+                    // Agent name + cost
+                    lineWithoutTasks.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+
+                    // Agent family
+                    lineWithoutTasks.Append(account.Email);
+
+                    /* Tasks */
+                    StringBuilder taskString = new StringBuilder();
+                    for (int i = 0; i < account.UserFunctions.Count; i++)
                     {
-                        /* Write agent to task records  - See "Agent Specification" */
-                        StringBuilder lineWithoutTasks = new StringBuilder();
-                        // Agent name + cost
-                        lineWithoutTasks.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
-
-                        // Agent family
-                        lineWithoutTasks.Append(account.Email);
-
-                        /* Tasks */
-                        StringBuilder taskString = new StringBuilder();
-                        for (int i = 0; i < account.UserFunctions.Count; i++)
+                        var taskName = GetGroupTasksArray().Where(gt => gt.Equals(account.UserFunctions[i].UserFunction));
+                        /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 
+                         * DON'T Exclude group tasks !!! (e.g. "Cleaner"/"Choir" etc task) - we will also specify group tasks in group agend section
+                         */
+                        //if (taskName.Count() <= 0)
                         {
-                            /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 */
-                            //if (!account.UserFunctions[i].UserFunction.Equals(gt))
-                            {
-                                taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
-                            }
+                            taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
                         }
-                        if (taskString.Length > 0)
-                        {
-                            outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
-                        }
+                    }
+                    if (taskString.Length > 0)
+                    {
+                        outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
                     }
                 }
             }
@@ -1804,9 +1803,9 @@ namespace WebApi.Services
                     case 23:
                         throw new AppException("Duplicate group member");
                     case 25:
-                        throw new AppException("Duplicate group member");
-                    default:
                         throw new AppException("Unspecified group member");
+                    default:
+                        throw new AppException("Unknown Agents2Tasks Error");
                 }
             }
         }
