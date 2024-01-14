@@ -1584,6 +1584,17 @@ namespace WebApi.Services
         {
             StringBuilder outputString = new StringBuilder();
 
+            WriteAgentRecords(outputString);
+            // Output group agent
+            WriteGroupAgentRecords(outputString);
+
+            resultStream.WriteLine(outputString.ToString());
+            resultStream.WriteLine("\n");
+
+        }
+
+        private void WriteAgentRecords(StringBuilder outputString)
+        {
             // Output agent specification
             var accounts = _context.Accounts.Include(x => x.UserFunctions)/*.OrderBy(a => a.Email)*/.ToList();
 
@@ -1612,22 +1623,16 @@ namespace WebApi.Services
                                 taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
                             }
                         }
-                        if(taskString.Length > 0)
+                        if (taskString.Length > 0)
                         {
                             outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
                         }
                     }
                 }
             }
-            // Output group agent
-            WriteGroupTaskRecords(outputString);
-
-            resultStream.WriteLine(outputString.ToString());
-            resultStream.WriteLine("\n");
-
         }
 
-        private void WriteGroupTaskRecords(StringBuilder outputString)
+        private void WriteGroupAgentRecords(StringBuilder outputString)
         {
             foreach(string tg in GetGroupTasksArray())
             {
