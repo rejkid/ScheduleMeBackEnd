@@ -100,6 +100,8 @@ namespace WebApi.Services
         void Delete(string id);
         public string[] GetTasks();
         public string[] GetGroupTasks();
+        public string[] GetAllTasks();
+
 
         public void UploadAccounts(string path);
         void UploadTimeSlots(string fullPath);
@@ -1323,31 +1325,6 @@ namespace WebApi.Services
             }
         }
 
-        public string[] GetTasks()
-        {
-            log.Info("GetTasks before locking");
-            semaphoreObject.Wait();
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    return GetTasksArray();
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetTasks:", ex);
-                    throw;
-                }
-                finally
-                {
-                    semaphoreObject.Release();
-                    log.Info("GetTasks after locking");
-                }
-            }
-        }
         public Byte[] DownloadSchedules()
         {
             log.Info("DownloadSchedules before locking");
@@ -1459,6 +1436,32 @@ namespace WebApi.Services
                 }
             }
         }
+        public string[] GetTasks()
+        {
+            log.Info("GetTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    return GetTasksArray();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetTasks after locking");
+                }
+            }
+        }
+
         public string[] GetGroupTasks()
         {
             log.Info("GetGroupTasks before locking");
@@ -1481,6 +1484,31 @@ namespace WebApi.Services
                 {
                     semaphoreObject.Release();
                     log.Info("GetGroupTasks after locking");
+                }
+            }
+        }
+        public string[] GetAllTasks()
+        {
+            log.Info("GetAllTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    return GetTasksArray().Concat(GetGroupTasksArray()).ToArray();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetAllTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetAllTasks after locking");
                 }
             }
         }

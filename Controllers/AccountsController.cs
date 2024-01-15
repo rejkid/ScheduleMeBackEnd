@@ -406,6 +406,13 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpGet("all-tasks")]
+        public ActionResult<string[]> GetAllTasks()
+        {
+            return Ok(_accountService.GetAllTasks());
+        }
+
+        [Authorize]
         [HttpPost("upload-accounts"), DisableRequestSizeLimit]
         public ActionResult UploadAccounts()
         {
