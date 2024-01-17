@@ -1981,7 +1981,7 @@ namespace WebApi.Services
             List <Function> functions = new List<Function>();
             CreateRequest request = new CreateRequest();
 
-            log.Info("UploadAccounts before locking");
+            log.Info("PopulateUsers before locking");
             semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
@@ -1994,7 +1994,7 @@ namespace WebApi.Services
                         // Create user request
                         CreateUser(worksheet, cols, row, request, functions);
 
-                        /* Check that the each group task (e.g. Cleaner) has some group specified (e.g. A or B etc) */
+                        /* Sanity check that each group task (e.g. Cleaner/Choir...) has some group specified (e.g. A or B etc) */
                         foreach (string gt in GetGroupTasksArray())
                         {
                             Function func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
@@ -2046,7 +2046,7 @@ namespace WebApi.Services
                 finally
                 {
                     semaphoreObject.Release();
-                    log.Info("Create after locking");
+                    log.Info("PopulateUsers after locking");
                 }
             }
         }
