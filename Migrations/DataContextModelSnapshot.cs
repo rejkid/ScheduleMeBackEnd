@@ -347,6 +347,7 @@ namespace WebApi.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ScheduleGroup")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("UserAvailability")

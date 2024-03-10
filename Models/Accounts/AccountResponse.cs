@@ -13,7 +13,7 @@ namespace WebApi.Models.Accounts
         public string LastName { get; set; }
         public string Email { get; set; }
         public string PhoneNumber { get; set; }
-        public string ScheduleGroup { get; set; }
+        public string ScheduleGroup { get; set; } = "";
         [Required]
         public string Dob { get; set; }
         public string Role { get; set; }

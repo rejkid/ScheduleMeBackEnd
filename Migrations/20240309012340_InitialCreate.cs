@@ -240,7 +240,7 @@ namespace WebApi.Migrations
                     Email = table.Column<string>(type: "TEXT", nullable: true),
                     UserAvailability = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
-                    ScheduleGroup = table.Column<string>(type: "TEXT", nullable: true),
+                    ScheduleGroup = table.Column<string>(type: "TEXT", nullable: false),
                     NotifiedWeekBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     NotifiedThreeDaysBefore = table.Column<bool>(type: "INTEGER", nullable: false),
                     NoOfTimesAssigned = table.Column<uint>(type: "INTEGER", nullable: false),

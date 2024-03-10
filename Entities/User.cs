@@ -12,6 +12,7 @@ namespace WebApi.Entities
         public string Function { get; set; }
         public DateTime Date { get; set; }
         public Boolean UserAvailability { get; set; }
-        public string ScheduleGroup { get; set; }
+        public string ScheduleGroup { get; set; } = "";
+        public string DOB { get; set; }
     }
 }

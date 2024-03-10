@@ -11,7 +11,7 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20231217032521_InitialCreate")]
+    [Migration("20240309012340_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -350,6 +350,7 @@ namespace WebApi.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ScheduleGroup")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("UserAvailability")

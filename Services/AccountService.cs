@@ -1368,12 +1368,12 @@ namespace WebApi.Services
                                            .SetTextAlignment(TextAlignment.LEFT)
                                            .SetFontSize(15).SetMultipliedLeading(1.0f);
                                     document.Add(header);
-                                    Table table = new Table(UnitValue.CreatePercentArray(5)).UseAllAvailableWidth();
+                                    Table table = new Table(UnitValue.CreatePercentArray(6)).UseAllAvailableWidth();
                                     table.SetKeepTogether(true);
                                     table.SetMarginTop(10);
                                     
 
-                                    var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.TIMES_BOLD);
+                                    var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.TIMES_ROMAN);
                                     var color = new DeviceRgb(210, 210, 210);
                                     iText.Layout.Style style = new iText.Layout.Style()
                                         .SetBackgroundColor(new DeviceRgb(210, 210, 210))
@@ -1382,6 +1382,7 @@ namespace WebApi.Services
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("FirstName")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("LastName")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("E-mail")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("DOB")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Team")));
 
                                     foreach (User user in team.Users)
@@ -1400,6 +1401,10 @@ namespace WebApi.Services
 
                                         cell = new iText.Layout.Element.Cell(1, 1);
                                         cell.Add(new Paragraph(new Text(user.Email)));
+                                        table.AddCell(cell);
+
+                                        cell = new iText.Layout.Element.Cell(1, 1);
+                                        cell.Add(new Paragraph(new Text(user.DOB)));
                                         table.AddCell(cell);
 
                                         cell = new iText.Layout.Element.Cell(1, 1);

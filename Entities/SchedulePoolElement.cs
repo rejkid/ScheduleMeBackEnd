@@ -10,6 +10,6 @@ namespace WebApi.Entities
         public Boolean Required { get; set; }
         public Boolean UserAvailability { get; set; }
         public string UserFunction { get; set; }
-        public string ScheduleGroup { get; set; }
+        public string ScheduleGroup { get; set; } = "";
     }
 }
