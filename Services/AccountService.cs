@@ -60,6 +60,7 @@ using iText.Kernel.Colors;
 using iText.IO.Font;
 using iText.Kernel.Font;
 using Text = iText.Layout.Element.Text;
+using iText.Kernel.Geom;
 
 namespace WebApi.Services
 {
@@ -1338,8 +1339,10 @@ namespace WebApi.Services
                     PdfWriter writer = new PdfWriter(stream);
                     PdfDocument pdf = new PdfDocument(writer);
                     writer.SetCloseStream(false);
-                    Document document = new Document(pdf);
 
+                    pdf.SetDefaultPageSize(PageSize.A4.Rotate());
+                    Document document = new Document(pdf);
+                    
                     using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
                     {
                         try
@@ -1589,8 +1592,8 @@ namespace WebApi.Services
                 DeleteAllSchedules();
                 /* Create output file*/
 
-                string inputfullPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
-                string outputfullResultPath = Path.Combine(Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
+                string inputfullPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
+                string outputfullResultPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
                 System.IO.File.Delete(inputfullPath);
                 System.IO.File.Delete(outputfullResultPath);
                 using (var resultStream = new StreamWriter(inputfullPath))
@@ -1796,11 +1799,11 @@ namespace WebApi.Services
         private void Runa2tExeAsync(string inputfullPath, string outputfullResultPath)
         {
 
-            string a2tExePath = Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
+            string a2tExePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), A2T_EXE);
 
             var result = Cli.Wrap(a2tExePath)
                             .WithArguments(new[] { inputfullPath, outputfullResultPath })
-                            .WithWorkingDirectory(Path.Combine(Directory.GetCurrentDirectory()))
+                            .WithWorkingDirectory(System.IO.Path.Combine(Directory.GetCurrentDirectory()))
                             .WithValidation(CommandResultValidation.None)
                             .ExecuteAsync().GetAwaiter().GetResult()
                             ;
