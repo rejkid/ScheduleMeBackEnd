@@ -266,6 +266,9 @@ namespace WebApi.Migrations
                     b.Property<string>("Group")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsGroup")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("UserFunction")
                         .HasColumnType("TEXT");
 

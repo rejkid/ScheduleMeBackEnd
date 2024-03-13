@@ -393,7 +393,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpGet("tasks")]
-        public ActionResult<string[]> GetTasks()
+        public ActionResult<TaskResponse> GetTasks()
         {
             return Ok(_accountService.GetTasks());
         }

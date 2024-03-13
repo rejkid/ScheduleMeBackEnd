@@ -99,7 +99,7 @@ namespace WebApi.Services
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
 
         void Delete(string id);
-        public string[] GetTasks();
+        public TaskResponse GetTasks();
         public string[] GetGroupTasks();
         public string[] GetAllTasks();
 
@@ -122,7 +122,7 @@ namespace WebApi.Services
         private const string A2T_INPUT = "a2t.txt";
         private const string A2T_OUTPUT = "a2t_result.txt";
         private const string A2T_EXE = "Agents2Tasks.exe";
-        private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
+        //private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
         private const string CLEANER = "Cleaner";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
@@ -1358,7 +1358,7 @@ namespace WebApi.Services
                                        .SetFontSize(20).SetMultipliedLeading(1.0f);
                                 document.Add(dateParagraph);
 
-                                var date = DateTime.ParseExact(dateTime.Date, DATE_TIME_FORMAT, CultureInfo.InvariantCulture);
+                                var date = DateTime.ParseExact(dateTime.Date, ConstantsDefined.DateTimeFormat, CultureInfo.InvariantCulture);
                                 Paragraph day = new Paragraph(date.DayOfWeek.ToString())
                                        .SetTextAlignment(TextAlignment.CENTER)
                                        .SetFontSize(20).SetMultipliedLeading(1.0f);
@@ -1444,16 +1444,37 @@ namespace WebApi.Services
                 }
             }
         }
-        public string[] GetTasks()
+
+        public TaskResponse GetTasks()
         {
             log.Info("GetTasks before locking");
             semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
+                TaskResponse response = new TaskResponse();
+                response.Functions = new List<Function>();
                 try
                 {
-                    return GetTasksArray();
+                    foreach (string f in GetTasksArray())
+                    {
+                        response.Functions.Add(new Function
+                        {
+                            UserFunction = f,
+                            Group = "",
+                            IsGroup = false
+                        });
+                    }
+                    foreach (string f in GetGroupTasksArray())
+                    {
+                        response.Functions.Add(new Function
+                        {
+                            UserFunction = f,
+                            Group = "",
+                            IsGroup = true
+                        });
+                    }
+                    return response;
                 }
                 catch (Exception ex)
                 {
@@ -1869,7 +1890,7 @@ namespace WebApi.Services
 
                                 Debug.Assert(lineComponents.Length >= 5);
                                 var dateStr = DateTime.ParseExact(lineComponents[1], AGENTS_2_TASKS_FORMAT,
-                                                        CultureInfo.InvariantCulture).ToString(DATE_TIME_FORMAT);
+                                                        CultureInfo.InvariantCulture).ToString(ConstantsDefined.DateTimeFormat);
 
                                 string[] accountComponents;
                                 string emailStr;
@@ -1900,7 +1921,7 @@ namespace WebApi.Services
                                     continue;
                                 }
 
-                                Account account = _context.Accounts.Include(x => x.Schedules).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
+                                Account account = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
                                 Debug.Assert(account != null);
 
                                 Console.WriteLine($"{dateStr}");
