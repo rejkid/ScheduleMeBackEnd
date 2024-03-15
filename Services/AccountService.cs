@@ -1008,7 +1008,7 @@ namespace WebApi.Services
                                   .Where(schedule => schedule.UserFunction.Equals(functionReq.UserFunction.UserFunction))
                                   .ToArray();
                     if(schedules.Length != 0) {
-                        throw new AppException("Function is still being used by a schedule. Remove schedule first");
+                        throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                     }
 
                     Function toRemove = null;
