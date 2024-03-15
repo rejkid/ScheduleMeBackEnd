@@ -87,7 +87,7 @@ namespace WebApi.Services
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
-        public AccountResponse DeleteFunction(string id, UpdateUserFunctionRequest functionReq);
+        public (AccountResponse, string) DeleteFunction(string id, UpdateUserFunctionRequest functionReq);
         public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq);
         //public SchedulePoolElementsResponse ChangeUserAvailability(int id, UpdateScheduleRequest scheduleReq);
         public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq);
@@ -992,7 +992,7 @@ namespace WebApi.Services
                 }
             }
         }
-        public AccountResponse DeleteFunction(string id, UpdateUserFunctionRequest functionReq)
+        public (AccountResponse, string) DeleteFunction(string id, UpdateUserFunctionRequest functionReq)
         {
             log.Info("DeleteFunction before locking");
             semaphoreObject.Wait();
@@ -1008,7 +1008,8 @@ namespace WebApi.Services
                                   .Where(schedule => schedule.UserFunction.Equals(functionReq.UserFunction.UserFunction))
                                   .ToArray();
                     if(schedules.Length != 0) {
-                        throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
+                        return (null, String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
+                        //throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                     }
 
                     Function toRemove = null;
@@ -1030,7 +1031,7 @@ namespace WebApi.Services
                     _context.SaveChanges();
                     transaction.Commit();
 
-                    return _mapper.Map<AccountResponse>(account);
+                    return (_mapper.Map<AccountResponse>(account), "");
                 }
                 catch (Exception ex)
                 {

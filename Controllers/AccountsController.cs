@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using Aspose.Pdf.Operators;
+using AutoMapper;
 using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;
@@ -321,7 +322,11 @@ namespace WebApi.Controllers
             if (id != Account.Id && Account.Role != Role.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
-            var account = _accountService.DeleteFunction(id, function);
+            var (account, message) = _accountService.DeleteFunction(id, function);
+            if(account == null)
+            {
+                return BadRequest(message);
+            }
             return Ok(account);
         }
 
