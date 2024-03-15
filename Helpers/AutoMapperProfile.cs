@@ -46,8 +46,10 @@ namespace WebApi.Helpers
 
 
             CreateMap<UpdateUserFunctionRequest, Function>();
+            //    .ForMember(dest => dest.UserFunction, opt => opt.MapFrom(src => src.Task.UserFunction))
+            //    .ForMember(dest => dest.IsGroup, opt => opt.MapFrom(src => src.Task.IsGroup));
 
-            
+
             CreateMap<AccountRequest, Account>()
             // .ForMember(d => d.Role, 
             //     op => op.MapFrom(o=> MapGrade(o.Role)))

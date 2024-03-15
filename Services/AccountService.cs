@@ -1003,11 +1003,19 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
 
+                    var schedules = _context.Schedules
+
+                                  .Where(schedule => schedule.UserFunction.Equals(functionReq.UserFunction.UserFunction))
+                                  .ToArray();
+                    if(schedules.Length != 0) {
+                        throw new AppException("Function is still being used by a schedule. Remove schedule first");
+                    }
+
                     Function toRemove = null;
                     // Purge all functions & UserFunctions  - we don't know which were changed
                     foreach (var item in account.UserFunctions)
                     {
-                        if (item.UserFunction == functionReq.UserFunction)
+                        if (item.UserFunction == functionReq.UserFunction.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -1049,7 +1057,7 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
                     var newFunction = new Function();
-                    newFunction = _mapper.Map<Function>(functionReq);
+                    newFunction = _mapper.Map<Function>(functionReq.UserFunction);
                     account.UserFunctions.Add(newFunction);
                     _context.Accounts.Update(account);
                     _context.SaveChanges();
