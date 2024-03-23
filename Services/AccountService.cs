@@ -61,6 +61,8 @@ using iText.IO.Font;
 using iText.Kernel.Font;
 using Text = iText.Layout.Element.Text;
 using iText.Kernel.Geom;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using static iText.Svg.SvgConstants;
 
 namespace WebApi.Services
 {
@@ -705,6 +707,7 @@ namespace WebApi.Services
                     {
                         ScheduleDateTime sdt = new ScheduleDateTime();
                         sdt.Date = schedule.Date;
+                        sdt.Id = schedule.ScheduleId;
                         response.ScheduleDateTimes.Add(sdt);
                     }
                 }
@@ -1662,39 +1665,73 @@ namespace WebApi.Services
         private void WriteAgentRecords(StringBuilder outputString)
         {
             // Output agent specification
-            var accounts = _context.Accounts.Include(x => x.UserFunctions)/*.OrderBy(a => a.Email)*/.ToList();
+            var accounts = _context.Accounts.Include(x => x.UserFunctions).OrderBy(a => a.Email).ToList();
+            List<KeyValuePair<string, List<Account>>> agentsSortedByFamily = SortAgentByFamily(accounts);
 
+            foreach (var kvp in agentsSortedByFamily)
+            {
+                foreach (var account in kvp.Value/*accounts*/)
+                {
+                    if (account.Role != Role.Admin)
+                    {
+                        /* Write agent to task records  - See "Agent Specification" */
+                        StringBuilder lineWithoutTasks = new StringBuilder();
+                        // Agent name + cost
+                        lineWithoutTasks.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
+
+                        // Agent family
+                        lineWithoutTasks.Append(account.Email);
+
+                        /* Tasks */
+                        StringBuilder taskString = new StringBuilder();
+                        for (int i = 0; i < account.UserFunctions.Count; i++)
+                        {
+                            var taskName = GetGroupTasksArray().Where(gt => gt.Equals(account.UserFunctions[i].UserFunction));
+                            /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 
+                             * DON'T Exclude group tasks !!! (e.g. "Cleaner"/"Choir" etc task) - we will also specify group tasks in group agend section
+                             */
+                            //if (taskName.Count() <= 0)
+                            {
+                                taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
+                            }
+                        }
+                        if (taskString.Length > 0)
+                        {
+                            outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
+                        }
+                    }
+                }
+            }
+        }
+
+        private List<KeyValuePair<string, List<Account>>> SortAgentByFamily(List<Account> accounts)
+        {
+            /* Sorted map - so the families are together and in order of number */
+            var map = new Dictionary<string, List<Account>>();
             foreach (var account in accounts)
             {
                 if (account.Role != Role.Admin)
                 {
-                    /* Write agent to task records  - See "Agent Specification" */
-                    StringBuilder lineWithoutTasks = new StringBuilder();
-                    // Agent name + cost
-                    lineWithoutTasks.Append("a ").Append(account.Email).Append(SEPARATOR).Append(account.DOB).Append(" ").Append("1").Append(" ");
-
-                    // Agent family
-                    lineWithoutTasks.Append(account.Email);
-
-                    /* Tasks */
-                    StringBuilder taskString = new StringBuilder();
-                    for (int i = 0; i < account.UserFunctions.Count; i++)
+                    /* Retrieve family name (as a key) belonging to group task (A/B/C ect) */
+                    var key = account.Email;
+                    if (map.ContainsKey(key))
                     {
-                        var taskName = GetGroupTasksArray().Where(gt => gt.Equals(account.UserFunctions[i].UserFunction));
-                        /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 
-                         * DON'T Exclude group tasks !!! (e.g. "Cleaner"/"Choir" etc task) - we will also specify group tasks in group agend section
-                         */
-                        //if (taskName.Count() <= 0)
-                        {
-                            taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
-                        }
+                        var list = map.GetValueOrDefault(key);
+                        list.Add(account);
                     }
-                    if (taskString.Length > 0)
+                    else
                     {
-                        outputString.Append(lineWithoutTasks.ToString()).Append(taskString).Append("\n");
+                        var l = new List<Account>();
+                        l.Add(account);
+                        map.Add(key, l);
                     }
                 }
             }
+            List<KeyValuePair<string, List<Account>>> sortedKeyValuePairs = map
+                    .OrderByDescending(kvp => kvp.Value.Count) // OrderByDescending if higher counts needed first
+                    .ToList();
+
+            return sortedKeyValuePairs;
         }
 
         private void WriteGroupAgentRecords(StringBuilder outputString)
@@ -1746,7 +1783,7 @@ namespace WebApi.Services
                 /*  Write Group Agent - see "Group Agent Specification" */
                 foreach (var keyValuePair in map)
                 {
-                    outputString.Append("g " + tg);
+                    outputString.Append("g").Append(" ").Append(keyValuePair.Key).Append(" ").Append(tg);
                     foreach (var a in keyValuePair.Value)
                     {
                         // Add agent name (email + dob)
@@ -1894,6 +1931,11 @@ namespace WebApi.Services
                             if (line.StartsWith("A"))
                             {
                                 log.Info("Read: " + line);
+                                if (line.Contains("_group"))
+                                {
+                                    // This is lead agent name - skip it
+                                    continue;
+                                }
 
                                 var lineComponents = line.Split(" ");
 
@@ -1905,7 +1947,7 @@ namespace WebApi.Services
                                 string emailStr;
                                 string dobStr;
                                 var functionStr = string.Empty;
-                                if (lineComponents.Length >= 7) // e.g. Cleaner
+                                if (lineComponents.Length >= 7) // e.g. Cleaner/Welcomer ect
                                 {
                                     // 7 element record
                                     functionStr = lineComponents[6];
@@ -1920,14 +1962,6 @@ namespace WebApi.Services
                                     accountComponents = lineComponents[2].Split("&");
                                     emailStr = accountComponents[0];
                                     dobStr = accountComponents[1];
-                                }
-                                accountComponents = lineComponents[2].Split("&");
-                                emailStr = accountComponents[0];
-                                dobStr = accountComponents[1].Split("_")[0];
-                                if (lineComponents.Length <= 5 && accountComponents[1].Split("_").Length == 2)
-                                {
-                                    // This is lead agent name - skip it
-                                    continue;
                                 }
 
                                 Account account = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
