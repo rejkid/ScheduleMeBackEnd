@@ -203,6 +203,14 @@ namespace WebApi.Controllers
             return Ok(accounts);
         }
 
+        [Authorize(Role.Admin)]
+        [HttpPost("accounts-by-date")]
+        public ActionResult<IEnumerable<AccountResponse>> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
+        {
+            var accounts = _accountService.GetAccountsForDate(accountsByDateAndTaskDTO);
+            return Ok(accounts);
+        }
+
         [Authorize]
         [HttpGet("{id}")]
         public ActionResult<AccountResponse> GetById(string id)

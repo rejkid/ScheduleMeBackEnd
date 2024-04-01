@@ -53,3 +53,4 @@ WebApiDatabase.db
 /WebApiDatabase.db-shm
 /WebApiDatabase.db-wal
 /Upload
+/.metadata/
