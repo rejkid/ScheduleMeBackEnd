@@ -63,6 +63,7 @@ using Text = iText.Layout.Element.Text;
 using iText.Kernel.Geom;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using static iText.Svg.SvgConstants;
+using System.Diagnostics.Metrics;
 
 namespace WebApi.Services
 {
@@ -77,6 +78,8 @@ namespace WebApi.Services
         void ValidateResetToken(ValidateResetTokenRequest mode);
         void ResetPassword(ResetPasswordRequest model);
         IEnumerable<AccountResponse> GetAll();
+        IEnumerable<AccountResponse> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO);
+
         AccountResponse GetById(string id);
 
         public ScheduleDateTimeResponse GetAllDates();
@@ -662,6 +665,38 @@ namespace WebApi.Services
             }
         }
 
+        public IEnumerable<AccountResponse> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
+        {
+            log.Info("GetAccountsForDate before locking");
+            semaphoreObject.Wait();
+
+            try
+            {
+                var accounts = _context.Accounts
+                  .Include(x => x.UserFunctions).Include(x => x.Schedules)
+                  .Where(account => account.Schedules
+                    .Any(s => s.Date.Equals(accountsByDateAndTaskDTO.DateStr) && s.UserFunction.Equals(accountsByDateAndTaskDTO.Task)))
+                  .ToArray();
+
+
+
+
+                //var accounts = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).OrderBy(a => a.LastName).ToList();
+                return _mapper.Map<IList<AccountResponse>>(accounts);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in GetAccountsForDate:", ex);
+                throw;
+            }
+            finally
+            {
+                semaphoreObject.Release();
+                log.Info("GetAccountsForDate after locking");
+            }
+        }
+
         public ScheduleDateTimeResponse GetAllDates()
         {
             log.Info("GetAllDates before locking");
@@ -918,7 +953,7 @@ namespace WebApi.Services
                                     && s.Dob == scheduleReq.Dob);
                     if(collection.Count > 0)
                     {
-                        throw new AppException("Schedule already is defined for this account");
+                        throw new AppException(String.Format("Schedule for {0} is already defined for this account", account.NormalizedUserName));
                     }
                     account.Schedules.Add(newSchedule);
                     _context.Accounts.Update(account);
@@ -1006,11 +1041,11 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
 
-                    var schedules = _context.Schedules
+                    var schedules = account.Schedules
+                                      .Where(s => s.UserFunction.Equals(functionReq.UserFunction.UserFunction))
+                                      .ToArray();
 
-                                  .Where(schedule => schedule.UserFunction.Equals(functionReq.UserFunction.UserFunction))
-                                  .ToArray();
-                    if(schedules.Length != 0) {
+                    if (schedules.Length != 0) {
                         return (null, String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                         //throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                     }
@@ -1767,17 +1802,21 @@ namespace WebApi.Services
                 foreach (var account in groupTaskAccounts)
                 {
                     /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
-                    var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
-                    if (map.ContainsKey(key))
+                    //var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
+                    var keys = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
+                    foreach (Function key in keys) 
                     {
-                        var list = map.GetValueOrDefault(key);
-                        list.Add(account);
-                    }
-                    else
-                    {
-                        var l = new List<Account>();
-                        l.Add(account);
-                        map.Add(key, l);
+                        if (map.ContainsKey(key.Group))
+                        {
+                            var list = map.GetValueOrDefault(key.Group);
+                            list.Add(account);
+                        }
+                        else
+                        {
+                            var l = new List<Account>();
+                            l.Add(account);
+                            map.Add(key.Group, l);
+                        }
                     }
                 }
                 /*  Write Group Agent - see "Group Agent Specification" */
@@ -1947,9 +1986,11 @@ namespace WebApi.Services
                                 string emailStr;
                                 string dobStr;
                                 var functionStr = string.Empty;
+                                var groupStr = string.Empty;
                                 if (lineComponents.Length >= 7) // e.g. Cleaner/Welcomer ect
                                 {
                                     // 7 element record
+                                    groupStr = lineComponents[4];
                                     functionStr = lineComponents[6];
                                     accountComponents = lineComponents[2].Split("&");
                                     emailStr = accountComponents[0];
@@ -1973,7 +2014,7 @@ namespace WebApi.Services
                                 {
                                     Date = dateStr,
                                     Email = emailStr,
-                                    ScheduleGroup = account.UserFunctions.Where(uf => uf.UserFunction.Equals(functionStr)).FirstOrDefault().Group,
+                                    ScheduleGroup = groupStr,// account.UserFunctions.Where(uf => uf.UserFunction.Equals(functionStr)).FirstOrDefault().Group,
                                     UserFunction = functionStr,
                                     Dob = dobStr,
                                 };
@@ -2075,7 +2116,6 @@ namespace WebApi.Services
                                 throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
                             }
                         }
-
                         // User and functions have been red in
                         request.Role = Role.User.ToString();
 
@@ -2102,6 +2142,13 @@ namespace WebApi.Services
                         account.UserFunctions.AddRange(functions);
                         _context.Accounts.Update(account);
 
+                        var groups = _context.Accounts
+                                              .Include(x => x.UserFunctions).SelectMany(kvp => kvp.UserFunctions).Select(b => b.Group).
+                                              Distinct().ToList();
+                        if(groups.Count > 0)
+                        {
+                            Console.WriteLine(groups.Count);
+                        }  
                         functions.Clear();
                     }
                     _context.SaveChanges();
@@ -2243,11 +2290,19 @@ namespace WebApi.Services
                                 Function f = new Function
                                 {
                                     UserFunction = functionStr.Trim(),
-                                    Group = groupStr // Group string for group task, empty string for the rest
+                                    Group = groupStr, // Group string for group task, empty string for the rest
                                 };
                                 if (!GetTasksArray().Contains(f.UserFunction) && !GetGroupTasksArray().Contains(f.UserFunction))
                                     throw new AppException(String.Format("User UserFunction '{1}' invalid at row {0}", row + 1, f.UserFunction));
 
+                                foreach (var groupTask in GetGroupTasksArray())
+                                {
+                                    if (groupTask == f.UserFunction)
+                                    {
+                                        f.IsGroup = true;
+                                        break;
+                                    }
+                                }
                                 functions.Add(f);
                             }
                         }
