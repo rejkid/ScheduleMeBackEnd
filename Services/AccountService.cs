@@ -170,6 +170,18 @@ namespace WebApi.Services
             _hostingEnvironment = hostingEnvironment;
         }
 
+        public static int CompareScheduleDateTime(ScheduleDateTime x, ScheduleDateTime y)
+        {
+            if (x == null)
+                return -1;
+            if (y == null)
+                return 1;
+            var date1 = DateTime.ParseExact(x.Date, ConstantsDefined.DateTimeFormat, CultureInfo.InvariantCulture);
+            var date2 = DateTime.ParseExact(y.Date, ConstantsDefined.DateTimeFormat, CultureInfo.InvariantCulture);
+
+            return date1.CompareTo(date2);
+        }
+
         public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
         {
             log.Info("Authenticate before locking");
@@ -1395,7 +1407,11 @@ namespace WebApi.Services
                         try
                         {
                             List<ScheduleDateTime> dateTimeList = GetAllDatesWithoutLock().ScheduleDateTimes;
-                            List<ScheduleDateTime> sortedList = dateTimeList.OrderBy(o => o.Date).ToList();
+
+                            List<ScheduleDateTime> sortedList = dateTimeList;
+                            var scheduleDateTimeComparer = new Comparison<ScheduleDateTime>(AccountService.CompareScheduleDateTime);
+                            sortedList.Sort(scheduleDateTimeComparer);
+
                             int index = 0;
                             foreach (ScheduleDateTime dateTime in sortedList)
                             {
