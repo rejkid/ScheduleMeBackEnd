@@ -64,6 +64,7 @@ using iText.Kernel.Geom;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using static iText.Svg.SvgConstants;
 using System.Diagnostics.Metrics;
+using Aspose.Pdf.Structure;
 
 namespace WebApi.Services
 {
@@ -89,6 +90,7 @@ namespace WebApi.Services
         AccountResponse Update(string id, AccountRequest model);
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
         public IEnumerable<UpdateScheduleRequest> DeleteAllSchedules();
+        public Boolean DeleteAllTimeSlots();
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
@@ -110,9 +112,15 @@ namespace WebApi.Services
 
 
         public void UploadAccounts(string path);
-        void UploadTimeSlots(string fullPath);
+        Boolean GenerateSchedules();
+        public void ImportTimeSlotsTasks(string xlsmfullPath);
+
         public Byte[] DownloadSchedules();
 
+        public List<TimeSlotTasks> GetTimeSlotsTasks();
+
+        public Boolean SetTimeSlotsTasks(TimeSlotTasks tasks);
+        public Boolean DeleteTimeSlotsTasks(TimeSlotTasks slotFromClient);
 
         public IEnumerable<AccountResponse> DeleteAllUserAccounts();
         public bool GetAutoEmail();
@@ -948,6 +956,37 @@ namespace WebApi.Services
             }
         }
 
+        public Boolean DeleteAllTimeSlots()
+        {
+            log.Info("DeleteAllTimeSlots before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var foundSchedules = _context.Schedules.ToArray().ToList();
+                    _context.TimeSlotsTasks.RemoveRange(_context.TimeSlotsTasks.ToArray().ToList());
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllTimeSlots:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("DeleteAllTimeSlots after locking");
+                }
+            }
+        }
+
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq)
         {
             log.Info("AddSchedule before locking");
@@ -1605,6 +1644,264 @@ namespace WebApi.Services
             }
         }
 
+        public void UploadAccounts(string path)
+        {
+            try
+            {
+                var accounts = _context.Accounts;
+                foreach (var account in accounts)
+                {
+                    if (account.Role != Role.Admin)
+                    {
+                        Delete(account.Id);
+                    }
+                }
+                PopulateUsers(path);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                throw;
+            }
+            finally
+            {
+                log.Info("UploadAccounts after locking");
+            }
+        }
+        public Boolean GenerateSchedules()
+        {
+            DeleteAllSchedules();
+
+            log.Info("UploadTimeSlots before locking");
+            semaphoreObject.Wait();
+
+            try
+            {
+                /* Create output file*/
+                string folderName = "Upload";
+                string contentRootPath = _hostingEnvironment.ContentRootPath;
+                string newPath = System.IO.Path.Combine(contentRootPath, folderName);
+                if (!Directory.Exists(newPath))
+                {
+                    Directory.CreateDirectory(newPath);
+                }
+
+                string inputfullPath = System.IO.Path.Combine(newPath, A2T_INPUT);
+                string outputfullResultPath = System.IO.Path.Combine(newPath, A2T_OUTPUT);
+                System.IO.File.Delete(inputfullPath);
+                System.IO.File.Delete(outputfullResultPath);
+                using (var resultStream = new StreamWriter(inputfullPath))
+                {
+                    WriteAgents2TasksInputFile(resultStream);
+                    WriteTimeSlots2Tasks2InputFile(resultStream);
+                }
+                Runa2tExeAsync(inputfullPath, outputfullResultPath);
+                CreateSchedulesFromOutput(outputfullResultPath);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
+                throw;
+            }
+            finally
+            {
+                log.Info("UploadAccounts after locking");
+                semaphoreObject.Release();
+            }
+        }
+
+        public List<TimeSlotTasks> GetTimeSlotsTasks()
+        {
+            log.Info("GetTimeSlotsTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var response = _context.TimeSlotsTasks.ToList();
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetTimeSlotsTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetTimeSlotsTasks after locking");
+                }
+            }
+        }
+
+        public Boolean SetTimeSlotsTasks(TimeSlotTasks slotFromClient)
+        {
+            log.Info("SetTimeSlotsTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                var slot = _context.TimeSlotsTasks
+                                  .Where(task => task.Date.Equals(slotFromClient.Date)).FirstOrDefault();
+                try
+                {
+                    if(slot == null)
+                    {
+                        _context.TimeSlotsTasks.Add(slotFromClient);
+                    } else
+                    {
+                        slot.Tasks = slotFromClient.Tasks;
+                    }
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    var response = true;// _context.TimeSlotsTasks.ToList();
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in SetTimeSlotsTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("SetTimeSlotsTasks after locking");
+                }
+            }
+        }
+
+        public Boolean DeleteTimeSlotsTasks(TimeSlotTasks slotFromClient)
+        {
+            log.Info("DeleteTimeSlotsTasks before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                var slot = _context.TimeSlotsTasks
+                                  .Where(task => task.Date.Equals(slotFromClient.Date)).FirstOrDefault();
+                try
+                {
+                    _context.TimeSlotsTasks.Remove(slot);
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    var response = true;// _context.TimeSlotsTasks.ToList();
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteTimeSlotsTasks:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("DeleteTimeSlotsTasks after locking");
+                }
+            }
+        }
+        public void ImportTimeSlotsTasks(string xlsmfullPath)
+        {
+            DeleteAllTimeSlots();
+
+            // Creates workbook
+            Workbook workbook = new Workbook(xlsmfullPath);
+
+            //Gets first worksheet
+            Worksheet worksheet = workbook.Worksheets[0];
+
+            // Print worksheet name
+            Console.WriteLine("Worksheet: " + worksheet.Name);
+
+            // Get number of rows and columns
+            int rows = worksheet.Cells.MaxDataRow;
+            int cols = worksheet.Cells.MaxDataColumn;
+
+            /* Sort all timeslots by date 
+             */
+            object[][] timeslots = new object[rows + 1][];
+            for (int row = 0; row <= rows; row++)
+            {
+                timeslots[row] = new object[cols + 1];
+                for (int col = 0; col <= cols; col++)
+                {
+                    timeslots[row][col] = worksheet.Cells[row, col].Value;
+                }
+            }
+            var sortedByDateVal = timeslots.OrderBy(y =>
+            {
+                var a = y[0];
+                var b = y[1];
+                return y[0];
+            }).ToArray();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    /* Output timeslots to the DB
+                    */
+                    for (int row = 0; row <= rows; row++)
+                    {
+                        TimeSlotTasks timeSlot = new TimeSlotTasks();
+                        /* Write time slots - see "Timeslot Specification" - it is almost 1:1 to the input file */
+                        for (int col = 0; col <= cols; col++)
+                        {
+                            if (col == 0)
+                            {
+                                DateTime dateTime = (DateTime)sortedByDateVal[row][col];
+                                timeSlot.Date = dateTime.ToString(ConstantsDefined.DateTimeFormat);
+                            }
+                            else
+                            {
+                                /* col == 1 */
+                                var functionsStr = (string)sortedByDateVal[row][col];
+                                functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
+                                string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
+                                functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                                if (functions.Length <= 0)
+                                    throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
+
+                                foreach (var functionStr in functions)
+                                {
+                                    string fStr = functionStr.Trim();
+                                    // Function (task) must be either task or group task
+                                    if (!GetTasksArray().Contains(fStr) && !GetGroupTasksArray().Contains(fStr))
+                                        throw new AppException(String.Format("UserFunction '{1}' invalid at row {0}", row + 1, fStr));
+                                }
+                                timeSlot.Tasks = String.Join(" ", functions);
+                            }
+                        }
+                        _context.TimeSlotsTasks.Add(timeSlot);
+
+                    }
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in WriteTimeSlots2TasksInputFile:", ex);
+                    throw;
+                }
+                //finally
+                //{
+                //    semaphoreObject.Release();
+                //    log.Info("WriteTimeSlots2TasksInputFile after locking");
+                //}
+            }
+        }
+
         protected void ManipulatePdf(MemoryStream src, MemoryStream dest)
         {
             PdfDocument pdfDoc = new PdfDocument(new PdfReader(src), new PdfWriter(dest));
@@ -1644,62 +1941,6 @@ namespace WebApi.Services
             }
             return strings.ToArray();
         }
-        public void UploadAccounts(string path)
-        {
-            try
-            {
-                var accounts = _context.Accounts;
-                foreach (var account in accounts)
-                {
-                    if (account.Role != Role.Admin)
-                    {
-                        Delete(account.Id);
-                    }
-                }
-                PopulateUsers(path);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
-                throw;
-            }
-            finally
-            {
-                log.Info("UploadAccounts after locking");
-            }
-        }
-        public void UploadTimeSlots(string timeSlotsFullPath)
-        {
-            try
-            {
-                DeleteAllSchedules();
-                /* Create output file*/
-
-                string inputfullPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(timeSlotsFullPath), A2T_INPUT);
-                string outputfullResultPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(timeSlotsFullPath), A2T_OUTPUT);
-                System.IO.File.Delete(inputfullPath);
-                System.IO.File.Delete(outputfullResultPath);
-                using (var resultStream = new StreamWriter(inputfullPath))
-                {
-                    WriteAgents2TasksInputFile(resultStream);
-                    WriteTimeSlots2TasksInputFile(timeSlotsFullPath, resultStream);
-                }
-                Runa2tExeAsync(inputfullPath, outputfullResultPath);
-                CreateSchedulesFromOutput(outputfullResultPath);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
-                throw;
-            }
-            finally
-            {
-                log.Info("UploadAccounts after locking");
-            }
-        }
-
         private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {
             StringBuilder outputString = new StringBuilder();
@@ -1848,76 +2089,36 @@ namespace WebApi.Services
                 }
             }
         }
-        
-        private void WriteTimeSlots2TasksInputFile(string xlsmfullPath, StreamWriter resultStream)
+
+        private void WriteTimeSlots2Tasks2InputFile(StreamWriter resultStream)
         {
-            // Creates workbook
-            Workbook workbook = new Workbook(xlsmfullPath);
-
-            //Gets first worksheet
-            Worksheet worksheet = workbook.Worksheets[0];
-
-            // Print worksheet name
-            Console.WriteLine("Worksheet: " + worksheet.Name);
-
-            // Get number of rows and columns
-            int rows = worksheet.Cells.MaxDataRow;
-            int cols = worksheet.Cells.MaxDataColumn;
-
-            /* Sort all timeslots by date 
-             */
-            object[][] timeslots = new object[rows+1][];
-            for (int row = 0; row <= rows; row++)
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
-                timeslots[row] = new object[cols+1];
-                for (int col = 0; col <= cols; col++)
+                try
                 {
-                    timeslots[row][col] = worksheet.Cells[row, col].Value;
-                }
-            }
-            var sortedByDateVal = timeslots.OrderBy(y =>
-            {
-                var a = y[0];
-                var b = y[1];
-                return y[0];
-            }).ToArray();
-
-            /* Output timeslots to the parameter 'resultStream'
-            */
-            for (int row = 0; row <= rows; row++)
-            {
-                /* Write time slots - see "Timeslot Specification" - it is almost 1:1 to the input file */
-                StringBuilder sb = new StringBuilder();
-                sb.Append("t ");
-                for (int col = 0; col <= cols; col++)
-                {
-                    if (col == 0)
+                    var response = _context.TimeSlotsTasks.ToList();
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var item in response)
                     {
-                        DateTime dateTime = (DateTime)sortedByDateVal[row][col];
-                        sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT+" "));
-                    } else
-                    {
-                        /* col == 1 */
-                        var functionsStr = (string)sortedByDateVal[row][col];
-                        functionsStr = (functionsStr == null) ? string.Empty : functionsStr.Trim();
-                        string[] functions = functionsStr == string.Empty ? new string[0] : functionsStr.Split(null);
-                        functions = functions.Where(x => !string.IsNullOrEmpty(x)).ToArray();
-                        if (functions.Length <= 0)
-                            throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
-
-                        foreach (var functionStr in functions)
-                        {
-                            string fStr = functionStr.Trim();
-                            // Function (task) must be either task or group task
-                            if (!GetTasksArray().Contains(fStr) && !GetGroupTasksArray().Contains(fStr))
-                                throw new AppException(String.Format("UserFunction '{1}' invalid at row {0}", row + 1, fStr));
-                        }
-                        sb.Append(String.Join(" ", functions));
+                        sb.Append("t ");
+                        DateTime dateTime = DateTime.ParseExact(item.Date, ConstantsDefined.DateTimeFormat,
+                                       System.Globalization.CultureInfo.InvariantCulture);
+                        sb.Append(dateTime.ToString(AGENTS_2_TASKS_FORMAT) + " ");
+                        sb.Append(item.Tasks);
+                        resultStream.WriteLine(sb.ToString());
+                        sb.Clear();
                     }
                 }
-                resultStream.WriteLine(sb.ToString());
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in WriteTimeSlots2Tasks2InputFile:", ex);
+                    throw;
+                }
             }
         }
+
         private void Runa2tExeAsync(string inputfullPath, string outputfullResultPath)
         {
 
@@ -1970,8 +2171,8 @@ namespace WebApi.Services
 
         private void CreateSchedulesFromOutput(string outputFile)
         {
-            log.Info("CreateSchedulesFromOutput before locking");
-            semaphoreObject.Wait();
+            //log.Info("CreateSchedulesFromOutput before locking");
+            //semaphoreObject.Wait();
 
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
@@ -2053,8 +2254,8 @@ namespace WebApi.Services
                 }
                 finally
                 {
-                    semaphoreObject.Release();
-                    log.Info("CreateSchedulesFromOutput after locking");
+                    //semaphoreObject.Release();
+                    //log.Info("CreateSchedulesFromOutput after locking");
                 }
             }
         }

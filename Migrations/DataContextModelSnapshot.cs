@@ -420,6 +420,23 @@ namespace WebApi.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WebApi.Entities.TimeSlotTasks", b =>
+                {
+                    b.Property<int>("TimeSlotTasksId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tasks")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("TimeSlotTasksId");
+
+                    b.ToTable("TimeSlotsTasks");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)

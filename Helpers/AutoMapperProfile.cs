@@ -1,6 +1,7 @@
 using AutoMapper;
 using log4net;
 using System;
+using System.Collections.Generic;
 using WebApi.Entities;
 using WebApi.Models.Accounts;
 

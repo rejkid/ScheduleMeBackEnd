@@ -23,6 +23,8 @@ namespace WebApi.Helpers
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
+        public DbSet<TimeSlotTasks> TimeSlotsTasks { get; set; }
+
         private readonly IConfiguration Configuration;
 
 

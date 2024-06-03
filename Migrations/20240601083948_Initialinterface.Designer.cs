@@ -11,8 +11,8 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20240312020314_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20240601083948_Initialinterface")]
+    partial class Initialinterface
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -421,6 +421,23 @@ namespace WebApi.Migrations
                             NoOfEmailsSentDayily = 1u,
                             autoEmail = false
                         });
+                });
+
+            modelBuilder.Entity("WebApi.Entities.TimeSlotTasks", b =>
+                {
+                    b.Property<int>("TimeSlotTasksId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tasks")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("TimeSlotTasksId");
+
+                    b.ToTable("TimeSlotsTasks");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

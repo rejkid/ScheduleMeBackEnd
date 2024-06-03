@@ -331,7 +331,7 @@ namespace WebApi.Controllers
                 return Unauthorized(new { message = "Unauthorized" });
 
             var (account, message) = _accountService.DeleteFunction(id, function);
-            if(account == null)
+            if (account == null)
             {
                 return BadRequest(message);
             }
@@ -483,7 +483,7 @@ namespace WebApi.Controllers
                     {
                         file.CopyTo(stream);
                     }
-                    _accountService.UploadTimeSlots(fullPath);
+                    _accountService.ImportTimeSlotsTasks(fullPath);
                 }
                 return Ok();
             }
@@ -492,6 +492,70 @@ namespace WebApi.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [Authorize]
+        [HttpGet("timeslots-tasks"), DisableRequestSizeLimit]
+        public ActionResult<List<TimeSlotTasks>> GetTimeSlotsTasks()
+        {
+            try
+            {
+
+                var retVal = _accountService.GetTimeSlotsTasks();
+                return Ok(retVal);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpPut("timeslots-tasks")]
+        public ActionResult<Boolean> SetTimeSlotsTasks(TimeSlotTasks tasks)
+        {
+            try
+            {
+
+                var retVal = _accountService.SetTimeSlotsTasks(tasks);
+                return Ok(retVal);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("timeslots-tasks")]
+        public ActionResult<Boolean> DeleteTimeSlotsTasks(TimeSlotTasks tasks)
+        {
+            try
+            {
+
+                var retVal = _accountService.DeleteTimeSlotsTasks(tasks);
+                return Ok(retVal);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpPost("generate-schedules")]
+        public ActionResult<Boolean> GenerateSchedules()
+        {
+            try
+            {
+                var retVal = _accountService.GenerateSchedules();
+                return Ok(retVal);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [Authorize]
         [HttpGet("download-schedules-file"), DisableRequestSizeLimit]
         public ActionResult DownloadSchedules()

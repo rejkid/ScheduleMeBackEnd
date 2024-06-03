@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WebApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initialinterface : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -95,6 +95,20 @@ namespace WebApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_SystemInformation", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TimeSlotsTasks",
+                columns: table => new
+                {
+                    TimeSlotTasksId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Date = table.Column<string>(type: "TEXT", nullable: true),
+                    Tasks = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TimeSlotsTasks", x => x.TimeSlotTasksId);
                 });
 
             migrationBuilder.CreateTable(
@@ -365,6 +379,9 @@ namespace WebApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "SystemInformation");
+
+            migrationBuilder.DropTable(
+                name: "TimeSlotsTasks");
 
             migrationBuilder.DropTable(
                 name: "UserFunctions");
