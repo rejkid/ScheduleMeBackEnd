@@ -1976,16 +1976,16 @@ namespace WebApi.Services
 
                         /* Tasks */
                         StringBuilder taskString = new StringBuilder();
+                        
+                        var arr = new ArrayList();
+
                         for (int i = 0; i < account.UserFunctions.Count; i++)
                         {
-                            var taskName = GetGroupTasksArray().Where(gt => gt.Equals(account.UserFunctions[i].UserFunction));
-                            /* All tasks - see issue https://github.com/JamesBremner/Agents2Tasks/issues/38 
-                             * DON'T Exclude group tasks !!! (e.g. "Cleaner"/"Choir" etc task) - we will also specify group tasks in group agend section
-                             */
-                            //if (taskName.Count() <= 0)
+                            if (!arr.Contains(account.UserFunctions[i].UserFunction))
                             {
-                                taskString.Append(" ").Append(account.UserFunctions[i].UserFunction).Append(" ");
+                                taskString.Append(" ").Append(account.UserFunctions[i].UserFunction);
                             }
+                            arr.Add(account.UserFunctions[i].UserFunction);
                         }
                         if (taskString.Length > 0)
                         {
@@ -2330,7 +2330,7 @@ namespace WebApi.Services
                             Function func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
                             if (func != null && func.Group.Trim().Length == 0 )
                             {
-                                throw new AppException(String.Format("Cleaner at row {0} has not defined Team Group", row + 1));
+                                throw new AppException(String.Format("Group task {1} at row {0} has not defined Team Group", row + 1, func.UserFunction));
                             }
                         }
                         // User and functions have been red in
