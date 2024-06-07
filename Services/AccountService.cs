@@ -79,7 +79,7 @@ namespace WebApi.Services
         void ValidateResetToken(ValidateResetTokenRequest mode);
         void ResetPassword(ResetPasswordRequest model);
         IEnumerable<AccountResponse> GetAll();
-        IEnumerable<AccountResponse> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO);
+        IEnumerable<AccountResponse> GetAccountsForDateAndTask(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO);
 
         AccountResponse GetById(string id);
 
@@ -685,7 +685,7 @@ namespace WebApi.Services
             }
         }
 
-        public IEnumerable<AccountResponse> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
+        public IEnumerable<AccountResponse> GetAccountsForDateAndTask(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
         {
             log.Info("GetAccountsForDate before locking");
             semaphoreObject.Wait();
@@ -698,10 +698,6 @@ namespace WebApi.Services
                     .Any(s => s.Date.Equals(accountsByDateAndTaskDTO.DateStr) && s.UserFunction.Equals(accountsByDateAndTaskDTO.Task)))
                   .ToArray();
 
-
-
-
-                //var accounts = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).OrderBy(a => a.LastName).ToList();
                 return _mapper.Map<IList<AccountResponse>>(accounts);
             }
             catch (Exception ex)
@@ -1484,11 +1480,11 @@ namespace WebApi.Services
                                         .SetBackgroundColor(new DeviceRgb(210, 210, 210))
                                         .SetFont(boldFont);
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Duty")));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("FirstName")));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("LastName")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("First Name")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Second Name")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("E-mail")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("DOB")));
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Team")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Group")));
 
                                     foreach (User user in team.Users)
                                     {
@@ -2189,7 +2185,7 @@ namespace WebApi.Services
                                 log.Info("Read: " + line);
                                 if (line.Contains("_group"))
                                 {
-                                    // This is lead agent name - skip it
+                                    // This is lead agent name - skip it - see "File format" documentation by James Bremner
                                     continue;
                                 }
 
@@ -2215,15 +2211,13 @@ namespace WebApi.Services
                                 }
                                 else
                                 {
-                                    // 5 element record e.g. Acolyte/MAS/EMHC/Reader1/Reader2/ ect
-                                    functionStr = lineComponents[4];
-                                    accountComponents = lineComponents[2].Split("&");
-                                    emailStr = accountComponents[0];
-                                    dobStr = accountComponents[1];
+                                    Debug.Assert(lineComponents.Length == 7, "Number of line parameters should be 7");
+                                    emailStr = "";
+                                    dobStr = "";
                                 }
 
                                 Account account = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
-                                Debug.Assert(account != null);
+                                Debug.Assert(account != null, "Record not found");
 
                                 Console.WriteLine($"{dateStr}");
 

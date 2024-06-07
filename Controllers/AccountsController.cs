@@ -205,9 +205,9 @@ namespace WebApi.Controllers
 
         [Authorize(Role.Admin)]
         [HttpPost("accounts-by-date")]
-        public ActionResult<IEnumerable<AccountResponse>> GetAccountsForDate(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
+        public ActionResult<IEnumerable<AccountResponse>> GetAccountsForDateAndTask(AccountsByDateAndTaskDTO accountsByDateAndTaskDTO)
         {
-            var accounts = _accountService.GetAccountsForDate(accountsByDateAndTaskDTO);
+            var accounts = _accountService.GetAccountsForDateAndTask(accountsByDateAndTaskDTO);
             return Ok(accounts);
         }
 
