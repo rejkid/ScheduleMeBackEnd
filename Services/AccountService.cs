@@ -2076,6 +2076,13 @@ namespace WebApi.Services
                 foreach (var keyValuePair in map)
                 {
                     outputString.Append("g").Append(" ").Append(keyValuePair.Key).Append(" ").Append(tg);
+                    /*
+                     * "To obtain more efficient assignments list the more flexible agents in a group last" - 
+                     * by James Bremner
+                     */
+                    keyValuePair.Value.Sort((Account a1, Account a2) => {
+                        return a1.UserFunctions.Count.CompareTo(a2.UserFunctions.Count);
+                    });
                     foreach (var a in keyValuePair.Value)
                     {
                         // Add agent name (email + dob)
