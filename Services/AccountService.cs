@@ -1479,7 +1479,7 @@ namespace WebApi.Services
                                     iText.Layout.Style style = new iText.Layout.Style()
                                         .SetBackgroundColor(new DeviceRgb(210, 210, 210))
                                         .SetFont(boldFont);
-                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Duty")));
+                                    table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Task")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("First Name")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("Second Name")));
                                     table.AddHeaderCell(new Paragraph().AddStyle(style).Add(new Text("E-mail")));
