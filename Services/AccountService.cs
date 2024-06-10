@@ -669,7 +669,7 @@ namespace WebApi.Services
 
             try
             {
-                var accounts = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).OrderBy(a => a.LastName).ToList();
+                var accounts = _context.Accounts.Include(x => x.UserFunctions).Include(x => x.Schedules).OrderBy(a => a.Created).ToList();
                 return _mapper.Map<IList<AccountResponse>>(accounts);
             }
             catch (Exception ex)
