@@ -2211,9 +2211,12 @@ namespace WebApi.Services
                                 }
                                 else
                                 {
-                                    Debug.Assert(lineComponents.Length == 7, "Number of line parameters should be 7");
-                                    emailStr = "";
-                                    dobStr = "";
+                                    Debug.Assert(lineComponents.Length == 5);
+                                    // 5 element record
+                                    functionStr = lineComponents[4];
+                                    accountComponents = lineComponents[2].Split("&");
+                                    emailStr = accountComponents[0];
+                                    dobStr = accountComponents[1];
                                 }
 
                                 Account account = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).SingleOrDefault(x => x.Email == emailStr && x.DOB == dobStr);
@@ -2225,7 +2228,7 @@ namespace WebApi.Services
                                 {
                                     Date = dateStr,
                                     Email = emailStr,
-                                    ScheduleGroup = groupStr,// account.UserFunctions.Where(uf => uf.UserFunction.Equals(functionStr)).FirstOrDefault().Group,
+                                    ScheduleGroup = groupStr.Length != 0 ? groupStr : account.UserFunctions.Where(uf => uf.UserFunction.Equals(functionStr)).FirstOrDefault().Group,
                                     UserFunction = functionStr,
                                     Dob = dobStr,
                                 };
