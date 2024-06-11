@@ -13,7 +13,7 @@ namespace WebApi.Models.Accounts
         public string Email { get; set; }
         public string PhoneNumber { get; set; }
         [Required]
-        public DateTime Dob { get; set; }
+        public string Dob { get; set; }
         public string Role { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
