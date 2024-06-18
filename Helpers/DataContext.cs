@@ -25,7 +25,7 @@ namespace WebApi.Helpers
 
         public DbSet<TimeSlotTasks> TimeSlotsTasks { get; set; }
 
-        public DbSet<AgentTask> SchedulerTasks { get; set; }
+        public DbSet<AgentTaskConfig> AgentTaskConfigs { get; set; }
 
         private readonly IConfiguration Configuration;
 
@@ -58,77 +58,68 @@ namespace WebApi.Helpers
                 autoEmail = false
             });
 
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId=1,
-                UserFunction = "Acolyte",
-                Group = "",
+                AgentTaskConfigId = 1,
+                AgentTaskStr = "Acolyte",
                 IsGroup = false,
             }) ;
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 2,
-                UserFunction = "EMHC",
-                Group = "",
+                AgentTaskConfigId = 2,
+                AgentTaskStr = "EMHC",
                 IsGroup = false,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 3,
-                UserFunction = "MAS",
-                Group = "",
+                AgentTaskConfigId = 3,
+                AgentTaskStr = "MAS",
                 IsGroup = false,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 4,
-                UserFunction = "Reader1",
-                Group = "",
+                AgentTaskConfigId = 4,
+                AgentTaskStr = "Reader1",
                 IsGroup = false,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 5,
-                UserFunction = "Reader2",
-                Group = "",
+                AgentTaskConfigId = 5,
+                AgentTaskStr = "Reader2",
                 IsGroup = false,
             });
 
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 6,
-                UserFunction = "Cleaner",
-                Group = "Cleaner",
+                AgentTaskConfigId = 6,
+                AgentTaskStr = "Cleaner",
                 IsGroup = true,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 7,
-                UserFunction = "Choir",
-                Group = "Choir",
+                AgentTaskConfigId = 7,
+                AgentTaskStr = "Choir",
                 IsGroup = true,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 8,
-                UserFunction = "Welcomer",
-                Group = "Welcomer",
+                AgentTaskConfigId = 8,
+                AgentTaskStr = "Welcomer",
                 IsGroup = true,
             });
-            modelBuilder.Entity<AgentTask>().HasData(
-            new AgentTask
+            modelBuilder.Entity<AgentTaskConfig>().HasData(
+            new AgentTaskConfig
             {
-                FunctionId = 9,
-                UserFunction = "Collector",
-                Group = "Collector",
+                AgentTaskConfigId = 9,
+                AgentTaskStr = "Collector",
                 IsGroup = true,
             });
 

@@ -1916,14 +1916,14 @@ namespace WebApi.Services
 
         private string[] GetTasksArray()
         {
-            var tasks = _context.SchedulerTasks.Where(task => task.IsGroup == false).ToArray();
-            return tasks.Select(task => task.UserFunction).ToArray();//new List<string>();
+            var tasks = _context.AgentTaskConfigs.Where(task => task.IsGroup == false).ToArray();
+            return tasks.Select(task => task.AgentTaskStr).ToArray();//new List<string>();
         }
 
         private string[] GetGroupTasksArray()
         {
-            var tasks = _context.SchedulerTasks.Where(task => task.IsGroup == true).ToArray();
-            return tasks.Select(task => task.UserFunction).ToArray();// new List<string>();
+            var tasks = _context.AgentTaskConfigs.Where(task => task.IsGroup == true).ToArray();
+            return tasks.Select(task => task.AgentTaskStr).ToArray();// new List<string>();
         }
         private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {

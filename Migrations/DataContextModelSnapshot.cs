@@ -276,71 +276,79 @@ namespace WebApi.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("AgentTask");
+                    b.ToTable("UserFunctions");
+                });
+
+            modelBuilder.Entity("WebApi.Entities.AgentTaskConfig", b =>
+                {
+                    b.Property<int>("AgentTaskConfigId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AgentTaskStr")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsGroup")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("AgentTaskConfigId");
+
+                    b.ToTable("AgentTaskConfigs");
 
                     b.HasData(
                         new
                         {
-                            FunctionId = 1,
-                            Group = "",
-                            IsGroup = false,
-                            UserFunction = "Acolyte"
+                            AgentTaskConfigId = 1,
+                            AgentTaskStr = "Acolyte",
+                            IsGroup = false
                         },
                         new
                         {
-                            FunctionId = 2,
-                            Group = "",
-                            IsGroup = false,
-                            UserFunction = "EMHC"
+                            AgentTaskConfigId = 2,
+                            AgentTaskStr = "EMHC",
+                            IsGroup = false
                         },
                         new
                         {
-                            FunctionId = 3,
-                            Group = "",
-                            IsGroup = false,
-                            UserFunction = "MAS"
+                            AgentTaskConfigId = 3,
+                            AgentTaskStr = "MAS",
+                            IsGroup = false
                         },
                         new
                         {
-                            FunctionId = 4,
-                            Group = "",
-                            IsGroup = false,
-                            UserFunction = "Reader1"
+                            AgentTaskConfigId = 4,
+                            AgentTaskStr = "Reader1",
+                            IsGroup = false
                         },
                         new
                         {
-                            FunctionId = 5,
-                            Group = "",
-                            IsGroup = false,
-                            UserFunction = "Reader2"
+                            AgentTaskConfigId = 5,
+                            AgentTaskStr = "Reader2",
+                            IsGroup = false
                         },
                         new
                         {
-                            FunctionId = 6,
-                            Group = "Cleaner",
-                            IsGroup = true,
-                            UserFunction = "Cleaner"
+                            AgentTaskConfigId = 6,
+                            AgentTaskStr = "Cleaner",
+                            IsGroup = true
                         },
                         new
                         {
-                            FunctionId = 7,
-                            Group = "Choir",
-                            IsGroup = true,
-                            UserFunction = "Choir"
+                            AgentTaskConfigId = 7,
+                            AgentTaskStr = "Choir",
+                            IsGroup = true
                         },
                         new
                         {
-                            FunctionId = 8,
-                            Group = "Welcomer",
-                            IsGroup = true,
-                            UserFunction = "Welcomer"
+                            AgentTaskConfigId = 8,
+                            AgentTaskStr = "Welcomer",
+                            IsGroup = true
                         },
                         new
                         {
-                            FunctionId = 9,
-                            Group = "Collector",
-                            IsGroup = true,
-                            UserFunction = "Collector"
+                            AgentTaskConfigId = 9,
+                            AgentTaskStr = "Collector",
+                            IsGroup = true
                         });
                 });
 

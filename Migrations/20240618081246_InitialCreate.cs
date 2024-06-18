@@ -14,6 +14,20 @@ namespace WebApi.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "AgentTaskConfigs",
+                columns: table => new
+                {
+                    AgentTaskConfigId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    AgentTaskStr = table.Column<string>(type: "TEXT", nullable: true),
+                    IsGroup = table.Column<bool>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AgentTaskConfigs", x => x.AgentTaskConfigId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
                 {
@@ -132,27 +146,6 @@ namespace WebApi.Migrations
                         principalTable: "AspNetRoles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AgentTask",
-                columns: table => new
-                {
-                    FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserFunction = table.Column<string>(type: "TEXT", nullable: true),
-                    Group = table.Column<string>(type: "TEXT", nullable: true),
-                    IsGroup = table.Column<bool>(type: "INTEGER", nullable: false),
-                    AccountId = table.Column<string>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AgentTask", x => x.FunctionId);
-                    table.ForeignKey(
-                        name: "FK_AgentTask_AspNetUsers_AccountId",
-                        column: x => x.AccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -294,31 +287,47 @@ namespace WebApi.Migrations
                         principalColumn: "Id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserFunctions",
+                columns: table => new
+                {
+                    FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserFunction = table.Column<string>(type: "TEXT", nullable: true),
+                    Group = table.Column<string>(type: "TEXT", nullable: true),
+                    IsGroup = table.Column<bool>(type: "INTEGER", nullable: false),
+                    AccountId = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFunctions", x => x.FunctionId);
+                    table.ForeignKey(
+                        name: "FK_UserFunctions_AspNetUsers_AccountId",
+                        column: x => x.AccountId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
             migrationBuilder.InsertData(
-                table: "AgentTask",
-                columns: new[] { "FunctionId", "AccountId", "Group", "IsGroup", "UserFunction" },
+                table: "AgentTaskConfigs",
+                columns: new[] { "AgentTaskConfigId", "AgentTaskStr", "IsGroup" },
                 values: new object[,]
                 {
-                    { 1, null, "", false, "Acolyte" },
-                    { 2, null, "", false, "EMHC" },
-                    { 3, null, "", false, "MAS" },
-                    { 4, null, "", false, "Reader1" },
-                    { 5, null, "", false, "Reader2" },
-                    { 6, null, "Cleaner", true, "Cleaner" },
-                    { 7, null, "Choir", true, "Choir" },
-                    { 8, null, "Welcomer", true, "Welcomer" },
-                    { 9, null, "Collector", true, "Collector" }
+                    { 1, "Acolyte", false },
+                    { 2, "EMHC", false },
+                    { 3, "MAS", false },
+                    { 4, "Reader1", false },
+                    { 5, "Reader2", false },
+                    { 6, "Cleaner", true },
+                    { 7, "Choir", true },
+                    { 8, "Welcomer", true },
+                    { 9, "Collector", true }
                 });
 
             migrationBuilder.InsertData(
                 table: "SystemInformation",
                 columns: new[] { "Id", "NoOfEmailsSentDayily", "autoEmail" },
                 values: new object[] { 1, 1u, false });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AgentTask_AccountId",
-                table: "AgentTask",
-                column: "AccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -366,13 +375,18 @@ namespace WebApi.Migrations
                 name: "IX_Schedules_AccountId",
                 table: "Schedules",
                 column: "AccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFunctions_AccountId",
+                table: "UserFunctions",
+                column: "AccountId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AgentTask");
+                name: "AgentTaskConfigs");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
@@ -403,6 +417,9 @@ namespace WebApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "TimeSlotsTasks");
+
+            migrationBuilder.DropTable(
+                name: "UserFunctions");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
