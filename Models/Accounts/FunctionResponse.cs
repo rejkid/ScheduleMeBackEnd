@@ -9,6 +9,6 @@ namespace WebApi.Models.Accounts
         public int Id { get; set; }
         
         
-        public List<Function> Functions { get; set; }
+        public List<SchedulerTask> Functions { get; set; }
     }
 }

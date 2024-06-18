@@ -8,7 +8,7 @@ namespace WebApi.Models.Accounts
     public class UpdateUserFunctionRequest
     {
         [Required]
-        public Function UserFunction { get; set; }
+        public SchedulerTask UserFunction { get; set; }
         //public string UserFunction { get; set; }
         //public string Group { get; set; }
     }

@@ -18,7 +18,7 @@ namespace WebApi.Helpers
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
 
-        public DbSet<Function> UserFunctions { get; set; }
+        public DbSet<SchedulerTask> UserFunctions { get; set; }
         public DbSet<SchedulePoolElement> SchedulePoolElements { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -60,7 +60,7 @@ namespace WebApi.Helpers
                 .WithOne()
                 .OnDelete(DeleteBehavior.ClientCascade);
             modelBuilder.Entity<Account>()
-                .HasMany<Function>(a => a.UserFunctions)
+                .HasMany<SchedulerTask>(a => a.UserFunctions)
                 .WithOne()
                 .OnDelete(DeleteBehavior.ClientCascade);
             modelBuilder.Entity<Account>()

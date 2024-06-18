@@ -46,7 +46,7 @@ namespace WebApi.Helpers
             CreateMap<UpdateScheduleRequest, SchedulePoolElement>();
 
 
-            CreateMap<UpdateUserFunctionRequest, Function>();
+            CreateMap<UpdateUserFunctionRequest, SchedulerTask>();
             //    .ForMember(dest => dest.UserFunction, opt => opt.MapFrom(src => src.Task.UserFunction))
             //    .ForMember(dest => dest.IsGroup, opt => opt.MapFrom(src => src.Task.IsGroup));
 

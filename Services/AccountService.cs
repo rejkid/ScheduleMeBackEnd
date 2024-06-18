@@ -1097,7 +1097,7 @@ namespace WebApi.Services
                         //throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                     }
 
-                    Function toRemove = null;
+                    SchedulerTask toRemove = null;
                     // Purge all functions & UserFunctions  - we don't know which were changed
                     foreach (var item in account.UserFunctions)
                     {
@@ -1142,8 +1142,8 @@ namespace WebApi.Services
                 try
                 {
                     var account = getAccount(id);
-                    var newFunction = new Function();
-                    newFunction = _mapper.Map<Function>(functionReq.UserFunction);
+                    var newFunction = new SchedulerTask();
+                    newFunction = _mapper.Map<SchedulerTask>(functionReq.UserFunction);
                     account.UserFunctions.Add(newFunction);
                     _context.Accounts.Update(account);
                     _context.SaveChanges();
@@ -1551,12 +1551,12 @@ namespace WebApi.Services
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 TaskResponse response = new TaskResponse();
-                response.Functions = new List<Function>();
+                response.Functions = new List<SchedulerTask>();
                 try
                 {
                     foreach (string f in GetTasksArray())
                     {
-                        response.Functions.Add(new Function
+                        response.Functions.Add(new SchedulerTask
                         {
                             UserFunction = f,
                             Group = "",
@@ -1565,7 +1565,7 @@ namespace WebApi.Services
                     }
                     foreach (string f in GetGroupTasksArray())
                     {
-                        response.Functions.Add(new Function
+                        response.Functions.Add(new SchedulerTask
                         {
                             UserFunction = f,
                             Group = "",
@@ -2057,7 +2057,7 @@ namespace WebApi.Services
                     /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
                     //var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
                     var keys = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
-                    foreach (Function key in keys) 
+                    foreach (SchedulerTask key in keys) 
                     {
                         if (map.ContainsKey(key.Group))
                         {
@@ -2312,7 +2312,7 @@ namespace WebApi.Services
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
 
-            List <Function> functions = new List<Function>();
+            List <SchedulerTask> functions = new List<SchedulerTask>();
             CreateRequest request = new CreateRequest();
 
             log.Info("PopulateUsers before locking");
@@ -2331,7 +2331,7 @@ namespace WebApi.Services
                         /* Sanity check that each group task (e.g. Cleaner/Choir...) has some group specified (e.g. A or B etc) */
                         foreach (string gt in GetGroupTasksArray())
                         {
-                            Function func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
+                            SchedulerTask func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
                             if (func != null && func.Group.Trim().Length == 0 )
                             {
                                 throw new AppException(String.Format("Group task {1} at row {0} has not defined Team Group", row + 1, func.UserFunction));
@@ -2353,7 +2353,7 @@ namespace WebApi.Services
                             // hash password
                             account.PasswordHash = BC.HashPassword(request.Password);
 
-                            account.UserFunctions = new List<Entities.Function>();
+                            account.UserFunctions = new List<Entities.SchedulerTask>();
                             account.Schedules = new List<Schedule>();
                             var result = _userManager.CreateAsync(account).GetAwaiter().GetResult();
                             Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
@@ -2392,9 +2392,9 @@ namespace WebApi.Services
         }
 
         private void CreateUser(Worksheet worksheet, int noOfCols, int row,
-            CreateRequest request, List<Function> functions)
+            CreateRequest request, List<SchedulerTask> functions)
         {
-            Function function = new Function();
+            SchedulerTask function = new SchedulerTask();
             // Loop through each column in selected row
             for (int col = 0; col <= noOfCols; col++)
             {
@@ -2508,7 +2508,7 @@ namespace WebApi.Services
                              */
                             foreach (var functionStr in tasks)
                             {
-                                Function f = new Function
+                                SchedulerTask f = new SchedulerTask
                                 {
                                     UserFunction = functionStr.Trim(),
                                     Group = groupStr, // Group string for group task, empty string for the rest

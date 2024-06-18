@@ -34,7 +34,7 @@ namespace WebApi.Entities
         // End of Notification section
 
         public List<Schedule> Schedules { get; set; }
-        public List<Function> UserFunctions { get; set; }
+        public List<SchedulerTask> UserFunctions { get; set; }
         public List<RefreshToken> RefreshTokens { get; set; }
 
         public bool OwnsToken(string token) 
