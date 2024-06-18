@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace WebApi.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialinterface : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -130,6 +132,27 @@ namespace WebApi.Migrations
                         principalTable: "AspNetRoles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AgentTask",
+                columns: table => new
+                {
+                    FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserFunction = table.Column<string>(type: "TEXT", nullable: true),
+                    Group = table.Column<string>(type: "TEXT", nullable: true),
+                    IsGroup = table.Column<bool>(type: "INTEGER", nullable: false),
+                    AccountId = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AgentTask", x => x.FunctionId);
+                    table.ForeignKey(
+                        name: "FK_AgentTask_AspNetUsers_AccountId",
+                        column: x => x.AccountId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -271,31 +294,31 @@ namespace WebApi.Migrations
                         principalColumn: "Id");
                 });
 
-            migrationBuilder.CreateTable(
-                name: "UserFunctions",
-                columns: table => new
+            migrationBuilder.InsertData(
+                table: "AgentTask",
+                columns: new[] { "FunctionId", "AccountId", "Group", "IsGroup", "UserFunction" },
+                values: new object[,]
                 {
-                    FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserFunction = table.Column<string>(type: "TEXT", nullable: true),
-                    Group = table.Column<string>(type: "TEXT", nullable: true),
-                    IsGroup = table.Column<bool>(type: "INTEGER", nullable: false),
-                    AccountId = table.Column<string>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserFunctions", x => x.FunctionId);
-                    table.ForeignKey(
-                        name: "FK_UserFunctions_AspNetUsers_AccountId",
-                        column: x => x.AccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                    { 1, null, "", false, "Acolyte" },
+                    { 2, null, "", false, "EMHC" },
+                    { 3, null, "", false, "MAS" },
+                    { 4, null, "", false, "Reader1" },
+                    { 5, null, "", false, "Reader2" },
+                    { 6, null, "Cleaner", true, "Cleaner" },
+                    { 7, null, "Choir", true, "Choir" },
+                    { 8, null, "Welcomer", true, "Welcomer" },
+                    { 9, null, "Collector", true, "Collector" }
                 });
 
             migrationBuilder.InsertData(
                 table: "SystemInformation",
                 columns: new[] { "Id", "NoOfEmailsSentDayily", "autoEmail" },
                 values: new object[] { 1, 1u, false });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AgentTask_AccountId",
+                table: "AgentTask",
+                column: "AccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -343,16 +366,14 @@ namespace WebApi.Migrations
                 name: "IX_Schedules_AccountId",
                 table: "Schedules",
                 column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserFunctions_AccountId",
-                table: "UserFunctions",
-                column: "AccountId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "AgentTask");
+
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -382,9 +403,6 @@ namespace WebApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "TimeSlotsTasks");
-
-            migrationBuilder.DropTable(
-                name: "UserFunctions");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

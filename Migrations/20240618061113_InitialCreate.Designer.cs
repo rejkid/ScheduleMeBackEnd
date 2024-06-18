@@ -11,8 +11,8 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20240601083948_Initialinterface")]
-    partial class Initialinterface
+    [Migration("20240618061113_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -257,7 +257,7 @@ namespace WebApi.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Function", b =>
+            modelBuilder.Entity("WebApi.Entities.AgentTask", b =>
                 {
                     b.Property<int>("FunctionId")
                         .ValueGeneratedOnAdd()
@@ -279,7 +279,72 @@ namespace WebApi.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.ToTable("UserFunctions");
+                    b.ToTable("AgentTask");
+
+                    b.HasData(
+                        new
+                        {
+                            FunctionId = 1,
+                            Group = "",
+                            IsGroup = false,
+                            UserFunction = "Acolyte"
+                        },
+                        new
+                        {
+                            FunctionId = 2,
+                            Group = "",
+                            IsGroup = false,
+                            UserFunction = "EMHC"
+                        },
+                        new
+                        {
+                            FunctionId = 3,
+                            Group = "",
+                            IsGroup = false,
+                            UserFunction = "MAS"
+                        },
+                        new
+                        {
+                            FunctionId = 4,
+                            Group = "",
+                            IsGroup = false,
+                            UserFunction = "Reader1"
+                        },
+                        new
+                        {
+                            FunctionId = 5,
+                            Group = "",
+                            IsGroup = false,
+                            UserFunction = "Reader2"
+                        },
+                        new
+                        {
+                            FunctionId = 6,
+                            Group = "Cleaner",
+                            IsGroup = true,
+                            UserFunction = "Cleaner"
+                        },
+                        new
+                        {
+                            FunctionId = 7,
+                            Group = "Choir",
+                            IsGroup = true,
+                            UserFunction = "Choir"
+                        },
+                        new
+                        {
+                            FunctionId = 8,
+                            Group = "Welcomer",
+                            IsGroup = true,
+                            UserFunction = "Welcomer"
+                        },
+                        new
+                        {
+                            FunctionId = 9,
+                            Group = "Collector",
+                            IsGroup = true,
+                            UserFunction = "Collector"
+                        });
                 });
 
             modelBuilder.Entity("WebApi.Entities.RefreshToken", b =>
@@ -491,7 +556,7 @@ namespace WebApi.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WebApi.Entities.Function", b =>
+            modelBuilder.Entity("WebApi.Entities.AgentTask", b =>
                 {
                     b.HasOne("WebApi.Entities.Account", null)
                         .WithMany("UserFunctions")

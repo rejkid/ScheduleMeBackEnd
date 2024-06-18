@@ -1097,7 +1097,7 @@ namespace WebApi.Services
                         //throw new AppException(String.Format("Function is still being used by {0} schedule(s). Remove schedule(s) first", schedules.Length));
                     }
 
-                    SchedulerTask toRemove = null;
+                    AgentTask toRemove = null;
                     // Purge all functions & UserFunctions  - we don't know which were changed
                     foreach (var item in account.UserFunctions)
                     {
@@ -1142,8 +1142,8 @@ namespace WebApi.Services
                 try
                 {
                     var account = getAccount(id);
-                    var newFunction = new SchedulerTask();
-                    newFunction = _mapper.Map<SchedulerTask>(functionReq.UserFunction);
+                    var newFunction = new AgentTask();
+                    newFunction = _mapper.Map<AgentTask>(functionReq.UserFunction);
                     account.UserFunctions.Add(newFunction);
                     _context.Accounts.Update(account);
                     _context.SaveChanges();
@@ -1551,12 +1551,12 @@ namespace WebApi.Services
             using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
             {
                 TaskResponse response = new TaskResponse();
-                response.Functions = new List<SchedulerTask>();
+                response.Functions = new List<AgentTask>();
                 try
                 {
                     foreach (string f in GetTasksArray())
                     {
-                        response.Functions.Add(new SchedulerTask
+                        response.Functions.Add(new AgentTask
                         {
                             UserFunction = f,
                             Group = "",
@@ -1565,7 +1565,7 @@ namespace WebApi.Services
                     }
                     foreach (string f in GetGroupTasksArray())
                     {
-                        response.Functions.Add(new SchedulerTask
+                        response.Functions.Add(new AgentTask
                         {
                             UserFunction = f,
                             Group = "",
@@ -1916,26 +1916,14 @@ namespace WebApi.Services
 
         private string[] GetTasksArray()
         {
-            List<string> strings = new List<string>();
-            string s = _appSettings.Tasks.Trim();
-            string[] subs = s.Split(',');
-            foreach(string func in subs)
-            {
-                strings.Add(func.Trim());
-            }
-            return strings.ToArray();
+            var tasks = _context.SchedulerTasks.Where(task => task.IsGroup == false).ToArray();
+            return tasks.Select(task => task.UserFunction).ToArray();//new List<string>();
         }
 
         private string[] GetGroupTasksArray()
         {
-            List<string> strings = new List<string>();
-            string s = _appSettings.GroupTasks.Trim();
-            string[] subs = s.Split(',');
-            foreach (string func in subs)
-            {
-                strings.Add(func.Trim());
-            }
-            return strings.ToArray();
+            var tasks = _context.SchedulerTasks.Where(task => task.IsGroup == true).ToArray();
+            return tasks.Select(task => task.UserFunction).ToArray();// new List<string>();
         }
         private void WriteAgents2TasksInputFile(StreamWriter resultStream)
         {
@@ -2057,7 +2045,7 @@ namespace WebApi.Services
                     /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
                     //var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
                     var keys = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
-                    foreach (SchedulerTask key in keys) 
+                    foreach (AgentTask key in keys) 
                     {
                         if (map.ContainsKey(key.Group))
                         {
@@ -2312,7 +2300,7 @@ namespace WebApi.Services
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
 
-            List <SchedulerTask> functions = new List<SchedulerTask>();
+            List <AgentTask> functions = new List<AgentTask>();
             CreateRequest request = new CreateRequest();
 
             log.Info("PopulateUsers before locking");
@@ -2331,7 +2319,7 @@ namespace WebApi.Services
                         /* Sanity check that each group task (e.g. Cleaner/Choir...) has some group specified (e.g. A or B etc) */
                         foreach (string gt in GetGroupTasksArray())
                         {
-                            SchedulerTask func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
+                            AgentTask func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
                             if (func != null && func.Group.Trim().Length == 0 )
                             {
                                 throw new AppException(String.Format("Group task {1} at row {0} has not defined Team Group", row + 1, func.UserFunction));
@@ -2353,7 +2341,7 @@ namespace WebApi.Services
                             // hash password
                             account.PasswordHash = BC.HashPassword(request.Password);
 
-                            account.UserFunctions = new List<Entities.SchedulerTask>();
+                            account.UserFunctions = new List<Entities.AgentTask>();
                             account.Schedules = new List<Schedule>();
                             var result = _userManager.CreateAsync(account).GetAwaiter().GetResult();
                             Debug.Assert(result != null && IdentityResult.Success.Succeeded == result.Succeeded);
@@ -2392,9 +2380,9 @@ namespace WebApi.Services
         }
 
         private void CreateUser(Worksheet worksheet, int noOfCols, int row,
-            CreateRequest request, List<SchedulerTask> functions)
+            CreateRequest request, List<AgentTask> functions)
         {
-            SchedulerTask function = new SchedulerTask();
+            AgentTask function = new AgentTask();
             // Loop through each column in selected row
             for (int col = 0; col <= noOfCols; col++)
             {
@@ -2508,7 +2496,7 @@ namespace WebApi.Services
                              */
                             foreach (var functionStr in tasks)
                             {
-                                SchedulerTask f = new SchedulerTask
+                                AgentTask f = new AgentTask
                                 {
                                     UserFunction = functionStr.Trim(),
                                     Group = groupStr, // Group string for group task, empty string for the rest

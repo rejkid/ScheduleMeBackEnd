@@ -21,6 +21,6 @@ namespace WebApi.Models.Accounts
         public DateTime? Updated { get; set; }
         public bool IsVerified { get; set; }
         public List<Schedule> Schedules { get; set; }
-        public List<SchedulerTask> UserFunctions { get; set; }
+        public List<AgentTask> UserFunctions { get; set; }
     }
 }

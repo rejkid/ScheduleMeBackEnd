@@ -18,12 +18,14 @@ namespace WebApi.Helpers
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
 
-        public DbSet<SchedulerTask> UserFunctions { get; set; }
+        public DbSet<AgentTask> UserFunctions { get; set; }
         public DbSet<SchedulePoolElement> SchedulePoolElements { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public DbSet<TimeSlotTasks> TimeSlotsTasks { get; set; }
+
+        public DbSet<AgentTask> SchedulerTasks { get; set; }
 
         private readonly IConfiguration Configuration;
 
@@ -55,12 +57,87 @@ namespace WebApi.Helpers
                 NoOfEmailsSentDayily = 1,
                 autoEmail = false
             });
+
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId=1,
+                UserFunction = "Acolyte",
+                Group = "",
+                IsGroup = false,
+            }) ;
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 2,
+                UserFunction = "EMHC",
+                Group = "",
+                IsGroup = false,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 3,
+                UserFunction = "MAS",
+                Group = "",
+                IsGroup = false,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 4,
+                UserFunction = "Reader1",
+                Group = "",
+                IsGroup = false,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 5,
+                UserFunction = "Reader2",
+                Group = "",
+                IsGroup = false,
+            });
+
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 6,
+                UserFunction = "Cleaner",
+                Group = "Cleaner",
+                IsGroup = true,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 7,
+                UserFunction = "Choir",
+                Group = "Choir",
+                IsGroup = true,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 8,
+                UserFunction = "Welcomer",
+                Group = "Welcomer",
+                IsGroup = true,
+            });
+            modelBuilder.Entity<AgentTask>().HasData(
+            new AgentTask
+            {
+                FunctionId = 9,
+                UserFunction = "Collector",
+                Group = "Collector",
+                IsGroup = true,
+            });
+
             modelBuilder.Entity<Account>()
                 .HasMany<Schedule>(a => a.Schedules)
                 .WithOne()
                 .OnDelete(DeleteBehavior.ClientCascade);
             modelBuilder.Entity<Account>()
-                .HasMany<SchedulerTask>(a => a.UserFunctions)
+                .HasMany<AgentTask>(a => a.UserFunctions)
                 .WithOne()
                 .OnDelete(DeleteBehavior.ClientCascade);
             modelBuilder.Entity<Account>()
