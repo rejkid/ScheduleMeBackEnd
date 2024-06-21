@@ -65,6 +65,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using static iText.Svg.SvgConstants;
 using System.Diagnostics.Metrics;
 using Aspose.Pdf.Structure;
+using iText.Commons.Actions.Contexts;
 
 namespace WebApi.Services
 {
@@ -110,6 +111,13 @@ namespace WebApi.Services
         public string[] GetGroupTasks();
         public string[] GetAllTasks();
 
+        public List<AgentTaskConfig> GetAllAgentTaskConfigs();
+
+        public AgentTaskConfig UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq);
+
+        public void DeleteAgentTaskConfig(string id);
+
+        public void DeleteAllAgentTaskConfigs();
 
         public void UploadAccounts(string path);
         Boolean GenerateSchedules();
@@ -1636,6 +1644,128 @@ namespace WebApi.Services
                 {
                     semaphoreObject.Release();
                     log.Info("GetAllTasks after locking");
+                }
+            }
+        }
+
+        public List<AgentTaskConfig> GetAllAgentTaskConfigs()
+        {
+            log.Info("GetAllAgentTaskConfigs before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    transaction.Commit();
+                    return _context.AgentTaskConfigs.ToList();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetAllAgentTaskConfigs:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetAllAgentTaskConfigs after locking");
+                }
+            }
+        }
+        public AgentTaskConfig UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
+        {
+            log.Info("CreateAgentTaskConfig before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    AgentTaskConfig cfg = _context.AgentTaskConfigs.Where(task => task.AgentTaskStr.Equals(agentTaskConfigReq.AgentTaskStr)).SingleOrDefault();
+                    if(cfg == null) // Agent task def not found
+                    {
+                        cfg = agentTaskConfigReq;
+                        _context.AgentTaskConfigs.Add(cfg);
+                    } else
+                    {
+                        cfg.IsGroup = agentTaskConfigReq.IsGroup;
+                        _context.AgentTaskConfigs.Update(cfg);
+                    }
+                    _context.SaveChanges();
+                    transaction.Commit();
+                    return cfg;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in CreateAgentTaskConfig:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("CreateAgentTaskConfig after locking");
+                }
+            }
+        }
+        public void DeleteAgentTaskConfig(string id)
+        {
+            log.InfoFormat("DeleteAgentTaskConfig before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    AgentTaskConfig cfg = _context.AgentTaskConfigs.Where(task => task.AgentTaskStr.Equals(id)).SingleOrDefault();
+                    Debug.Assert(cfg != null, "Configuration for AgentTaskStr="+id+" does not exist");
+                    _context.AgentTaskConfigs.RemoveRange(cfg);
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAgentTaskConfig:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    Console.WriteLine("DeleteAgentTaskConfig after locking");
+                }
+            }
+        }
+        public void DeleteAllAgentTaskConfigs()
+        {
+            log.Info("DeleteAllAgentTaskConfigs before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var foundAgentTaskConfigs = _context.AgentTaskConfigs.ToArray().ToList();
+                    _context.AgentTaskConfigs.RemoveRange(foundAgentTaskConfigs);
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllAgentTaskConfigs:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("DeleteAllAgentTaskConfigs after locking");
                 }
             }
         }

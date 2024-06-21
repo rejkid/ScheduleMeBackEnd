@@ -17,14 +17,12 @@ namespace WebApi.Migrations
                 name: "AgentTaskConfigs",
                 columns: table => new
                 {
-                    AgentTaskConfigId = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AgentTaskStr = table.Column<string>(type: "TEXT", nullable: true),
+                    AgentTaskStr = table.Column<string>(type: "TEXT", nullable: false),
                     IsGroup = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AgentTaskConfigs", x => x.AgentTaskConfigId);
+                    table.PrimaryKey("PK_AgentTaskConfigs", x => x.AgentTaskStr);
                 });
 
             migrationBuilder.CreateTable(
@@ -310,18 +308,18 @@ namespace WebApi.Migrations
 
             migrationBuilder.InsertData(
                 table: "AgentTaskConfigs",
-                columns: new[] { "AgentTaskConfigId", "AgentTaskStr", "IsGroup" },
+                columns: new[] { "AgentTaskStr", "IsGroup" },
                 values: new object[,]
                 {
-                    { 1, "Acolyte", false },
-                    { 2, "EMHC", false },
-                    { 3, "MAS", false },
-                    { 4, "Reader1", false },
-                    { 5, "Reader2", false },
-                    { 6, "Cleaner", true },
-                    { 7, "Choir", true },
-                    { 8, "Welcomer", true },
-                    { 9, "Collector", true }
+                    { "Acolyte", false },
+                    { "Choir", true },
+                    { "Cleaner", true },
+                    { "Collector", true },
+                    { "EMHC", false },
+                    { "MAS", false },
+                    { "Reader1", false },
+                    { "Reader2", false },
+                    { "Welcomer", true }
                 });
 
             migrationBuilder.InsertData(

@@ -426,6 +426,64 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpGet("get-all-agent-task-configs")]
+        public ActionResult<List<AgentTaskConfig>> GetAllAgentTaskConfigs()
+        {
+            try
+            {
+                return _accountService.GetAllAgentTaskConfigs();
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpPut("create-agent-task-config/{id}")]
+        public ActionResult<AgentTaskConfig> UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
+        {
+            try
+            {
+                var result = _accountService.UpdateAgentTaskConfig(id, agentTaskConfigReq);
+                return Ok(result);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("delete-agent-task-config/{id}")]
+        public IActionResult DeleteAgentTaskConfig(string id)
+        {
+            try
+            {
+                _accountService.DeleteAgentTaskConfig(id);
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [Authorize]
+        [HttpDelete("delete-all-agent-task-configs")]
+        public IActionResult DeleteAllAgentTaskConfigs()
+        {
+            try
+            {
+                _accountService.DeleteAllAgentTaskConfigs();
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
         [HttpPost("upload-accounts"), DisableRequestSizeLimit]
         public ActionResult UploadAccounts()
         {

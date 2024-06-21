@@ -281,72 +281,59 @@ namespace WebApi.Migrations
 
             modelBuilder.Entity("WebApi.Entities.AgentTaskConfig", b =>
                 {
-                    b.Property<int>("AgentTaskConfigId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("AgentTaskStr")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsGroup")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("AgentTaskConfigId");
+                    b.HasKey("AgentTaskStr");
 
                     b.ToTable("AgentTaskConfigs");
 
                     b.HasData(
                         new
                         {
-                            AgentTaskConfigId = 1,
                             AgentTaskStr = "Acolyte",
                             IsGroup = false
                         },
                         new
                         {
-                            AgentTaskConfigId = 2,
                             AgentTaskStr = "EMHC",
                             IsGroup = false
                         },
                         new
                         {
-                            AgentTaskConfigId = 3,
                             AgentTaskStr = "MAS",
                             IsGroup = false
                         },
                         new
                         {
-                            AgentTaskConfigId = 4,
                             AgentTaskStr = "Reader1",
                             IsGroup = false
                         },
                         new
                         {
-                            AgentTaskConfigId = 5,
                             AgentTaskStr = "Reader2",
                             IsGroup = false
                         },
                         new
                         {
-                            AgentTaskConfigId = 6,
                             AgentTaskStr = "Cleaner",
                             IsGroup = true
                         },
                         new
                         {
-                            AgentTaskConfigId = 7,
                             AgentTaskStr = "Choir",
                             IsGroup = true
                         },
                         new
                         {
-                            AgentTaskConfigId = 8,
                             AgentTaskStr = "Welcomer",
                             IsGroup = true
                         },
                         new
                         {
-                            AgentTaskConfigId = 9,
                             AgentTaskStr = "Collector",
                             IsGroup = true
                         });

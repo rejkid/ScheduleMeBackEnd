@@ -61,35 +61,30 @@ namespace WebApi.Helpers
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 1,
                 AgentTaskStr = "Acolyte",
                 IsGroup = false,
             }) ;
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 2,
                 AgentTaskStr = "EMHC",
                 IsGroup = false,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 3,
                 AgentTaskStr = "MAS",
                 IsGroup = false,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 4,
                 AgentTaskStr = "Reader1",
                 IsGroup = false,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 5,
                 AgentTaskStr = "Reader2",
                 IsGroup = false,
             });
@@ -97,28 +92,24 @@ namespace WebApi.Helpers
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 6,
                 AgentTaskStr = "Cleaner",
                 IsGroup = true,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 7,
                 AgentTaskStr = "Choir",
                 IsGroup = true,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 8,
                 AgentTaskStr = "Welcomer",
                 IsGroup = true,
             });
             modelBuilder.Entity<AgentTaskConfig>().HasData(
             new AgentTaskConfig
             {
-                AgentTaskConfigId = 9,
                 AgentTaskStr = "Collector",
                 IsGroup = true,
             });
