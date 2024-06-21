@@ -2071,6 +2071,10 @@ namespace WebApi.Services
         private void WriteAgentRecords(StringBuilder outputString)
         {
             // Output agent specification
+            /* From conversation with James - issue #36
+             * "I suggest that, instead of sprinkling the family members at random through the input, 
+             * you should place them together early in the input."
+             */
             var accounts = _context.Accounts.Include(x => x.UserFunctions).OrderBy(a => a.Email).ToList();
             List<KeyValuePair<string, List<Account>>> agentsSortedByFamily = SortAgentByFamily(accounts);
 
