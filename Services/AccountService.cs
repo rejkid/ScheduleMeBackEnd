@@ -107,9 +107,6 @@ namespace WebApi.Services
         public SchedulePoolElement RemoveFromPool(int id, string email, string userFunction);
 
         void Delete(string id);
-        public TaskResponse GetTasks();
-        public string[] GetGroupTasks();
-        public string[] GetAllTasks();
 
         public List<AgentTaskConfig> GetAllAgentTaskConfigs();
 
@@ -1005,10 +1002,13 @@ namespace WebApi.Services
                     newSchedule = _mapper.Map<Schedule>(scheduleReq);
                     var collection = account.Schedules.FindAll(s => s.Date == scheduleReq.Date 
                                     && s.UserFunction == scheduleReq.UserFunction
-                                    && s.Dob == scheduleReq.Dob);
+                                    && s.ScheduleGroup == scheduleReq.ScheduleGroup);
                     if(collection.Count > 0)
                     {
-                        throw new AppException(String.Format("Schedule for {0} is already defined for this account", account.NormalizedUserName));
+                        throw new AppException(String.Format("Schedule for {0} {1} {2} is already defined for this account", 
+                            "Date: "+scheduleReq.Date,
+                            "Task: " + scheduleReq.UserFunction,
+                            "Group: " + scheduleReq.ScheduleGroup));
                     }
                     account.Schedules.Add(newSchedule);
                     _context.Accounts.Update(account);
@@ -1547,103 +1547,6 @@ namespace WebApi.Services
                             log.Info("DownloadSchedules after locking");
                         }
                     }
-                }
-            }
-        }
-
-        public TaskResponse GetTasks()
-        {
-            log.Info("GetTasks before locking");
-            semaphoreObject.Wait();
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                TaskResponse response = new TaskResponse();
-                response.Functions = new List<AgentTask>();
-                try
-                {
-                    foreach (string f in GetTasksArray())
-                    {
-                        response.Functions.Add(new AgentTask
-                        {
-                            UserFunction = f,
-                            Group = "",
-                            IsGroup = false
-                        });
-                    }
-                    foreach (string f in GetGroupTasksArray())
-                    {
-                        response.Functions.Add(new AgentTask
-                        {
-                            UserFunction = f,
-                            Group = "",
-                            IsGroup = true
-                        });
-                    }
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetTasks:", ex);
-                    throw;
-                }
-                finally
-                {
-                    semaphoreObject.Release();
-                    log.Info("GetTasks after locking");
-                }
-            }
-        }
-
-        public string[] GetGroupTasks()
-        {
-            log.Info("GetGroupTasks before locking");
-            semaphoreObject.Wait();
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    return GetGroupTasksArray();
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetGroupTasks:", ex);
-                    throw;
-                }
-                finally
-                {
-                    semaphoreObject.Release();
-                    log.Info("GetGroupTasks after locking");
-                }
-            }
-        }
-        public string[] GetAllTasks()
-        {
-            log.Info("GetAllTasks before locking");
-            semaphoreObject.Wait();
-
-            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    return GetTasksArray().Concat(GetGroupTasksArray()).ToArray();
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
-                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetAllTasks:", ex);
-                    throw;
-                }
-                finally
-                {
-                    semaphoreObject.Release();
-                    log.Info("GetAllTasks after locking");
                 }
             }
         }

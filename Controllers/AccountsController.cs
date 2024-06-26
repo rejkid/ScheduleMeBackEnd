@@ -405,27 +405,6 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
-        [HttpGet("tasks")]
-        public ActionResult<TaskResponse> GetTasks()
-        {
-            return Ok(_accountService.GetTasks());
-        }
-
-        [Authorize]
-        [HttpGet("group-tasks")]
-        public ActionResult<string[]> GetGroupTasks()
-        {
-            return Ok(_accountService.GetGroupTasks());
-        }
-
-        [Authorize]
-        [HttpGet("all-tasks")]
-        public ActionResult<string[]> GetAllTasks()
-        {
-            return Ok(_accountService.GetAllTasks());
-        }
-
-        [Authorize]
         [HttpGet("get-all-agent-task-configs")]
         public ActionResult<List<AgentTaskConfig>> GetAllAgentTaskConfigs()
         {
