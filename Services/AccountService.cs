@@ -135,12 +135,11 @@ namespace WebApi.Services
 
     public class AccountService : IAccountService
     {
-        private const string AGENTS_2_TASKS_FORMAT = "yyyyMMddhhmm";// "dd/MMM/yyyy/h:mm";
+        private const string AGENTS_2_TASKS_FORMAT = "yyyyMMddHHmm";// "dd/MMM/yyyy/h:mm";
         private const string SEPARATOR = "&";
         private const string A2T_INPUT = "a2t.txt";
         private const string A2T_OUTPUT = "a2t_result.txt";
         private const string A2T_EXE = "Agents2Tasks.exe";
-        //private const string DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
         private const string CLEANER = "Cleaner";
         public static TimeSpan THREE_DAYS_TIMEOUT = new TimeSpan(3, 0, 0, 0);   // Three days time span
         public static TimeSpan WEEK_TIMEOUT = new TimeSpan(7, 0, 0, 0);         // Week time span
