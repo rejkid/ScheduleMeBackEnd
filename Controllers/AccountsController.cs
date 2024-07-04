@@ -312,7 +312,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPut("add-function/{id}")]
-        public ActionResult<AccountResponse> AddFunction(string id, UpdateUserFunctionRequest function)
+        public ActionResult<AccountResponse> AddFunction(string id, AgentTask function)
         {
             // users can update their own account and admins can update any account
             if (id != Account.Id && Account.Role != Role.Admin)
@@ -324,7 +324,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPost("delete-function/{id}")]
-        public ActionResult<AccountResponse> DeleteFunction(string id, UpdateUserFunctionRequest function)
+        public ActionResult<AccountResponse> DeleteFunction(string id, AgentTask function)
         {
             // users can update their own account and admins can update any account
             if (id != Account.Id && Account.Role != Role.Admin)

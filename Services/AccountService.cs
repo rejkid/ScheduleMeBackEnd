@@ -95,8 +95,8 @@ namespace WebApi.Services
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
-        public (AccountResponse, string) DeleteFunction(string id, UpdateUserFunctionRequest functionReq);
-        public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq);
+        public (AccountResponse, string) DeleteFunction(string id, AgentTask functionReq);
+        public AccountResponse AddFunction(string id, AgentTask functionReq);
         //public SchedulePoolElementsResponse ChangeUserAvailability(int id, UpdateScheduleRequest scheduleReq);
         public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq);
@@ -1084,7 +1084,7 @@ namespace WebApi.Services
                 }
             }
         }
-        public (AccountResponse, string) DeleteFunction(string id, UpdateUserFunctionRequest functionReq)
+        public (AccountResponse, string) DeleteFunction(string id, AgentTask task)
         {
             log.Info("DeleteFunction before locking");
             semaphoreObject.Wait();
@@ -1096,7 +1096,7 @@ namespace WebApi.Services
                     var account = getAccount(id);
 
                     var schedules = account.Schedules
-                                      .Where(s => s.UserFunction.Equals(functionReq.UserFunction.UserFunction))
+                                      .Where(s => s.UserFunction.Equals(task.UserFunction))
                                       .ToArray();
 
                     if (schedules.Length != 0) {
@@ -1108,7 +1108,7 @@ namespace WebApi.Services
                     // Purge all functions & UserFunctions  - we don't know which were changed
                     foreach (var item in account.UserFunctions)
                     {
-                        if (item.UserFunction == functionReq.UserFunction.UserFunction)
+                        if (item.UserFunction == task.UserFunction)
                         {
                             toRemove = item;
                             break; // Found
@@ -1140,7 +1140,7 @@ namespace WebApi.Services
             }
         }
 
-        public AccountResponse AddFunction(string id, UpdateUserFunctionRequest functionReq)
+        public AccountResponse AddFunction(string id, AgentTask task)
         {
             log.Info("AddFunction before locking");
             semaphoreObject.Wait();
@@ -1150,7 +1150,7 @@ namespace WebApi.Services
                 {
                     var account = getAccount(id);
                     var newFunction = new AgentTask();
-                    newFunction = _mapper.Map<AgentTask>(functionReq.UserFunction);
+                    newFunction = _mapper.Map<AgentTask>(task);
                     account.UserFunctions.Add(newFunction);
                     _context.Accounts.Update(account);
                     _context.SaveChanges();
