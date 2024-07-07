@@ -439,7 +439,7 @@ namespace WebApi.Services
                 {
                     // validate
                     if (_context.Accounts.Any(x => x.Email == model.Email && x.DOB == model.Dob))
-                        throw new AppException($"Email '{model.Email}' DOB: '{model.Dob}' is already registered");
+                        throw new AppException($"User with Email '{model.Email}' DOB: '{model.Dob}' is already registered");
 
                     // map model to new account object
                     var account = _mapper.Map<Account>(model);
