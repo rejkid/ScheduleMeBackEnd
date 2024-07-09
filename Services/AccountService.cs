@@ -1040,7 +1040,7 @@ namespace WebApi.Services
                         throw new AppException(String.Format("Schedule for {0} {1} {2} is already defined for this account", 
                             "Date: "+scheduleReq.Date,
                             "Task: " + scheduleReq.UserFunction,
-                            "Group: " + scheduleReq.ScheduleGroup));
+                            (scheduleReq.ScheduleGroup.IsNullOrEmpty() ? "" : "Group: " + scheduleReq.ScheduleGroup)));
                     }
                     account.Schedules.Add(newSchedule);
                     _context.Accounts.Update(account);

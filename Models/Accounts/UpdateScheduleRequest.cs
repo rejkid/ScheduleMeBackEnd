@@ -11,6 +11,7 @@ namespace WebApi.Models.Accounts
         //[Required]
         public string Date { get; set; }
         public string Dob { get; set; }
+        public string Email { get; set; }
         public string NewDate { get; set; }
         [Required]
         public Boolean Required { get; set; }
