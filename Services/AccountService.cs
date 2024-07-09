@@ -90,11 +90,14 @@ namespace WebApi.Services
         AccountResponse Create(CreateRequest model);
         AccountResponse Update(string id, AccountRequest model);
         public AccountResponse DeleteSchedule(string id, UpdateScheduleRequest scheduleReq);
+        void DeleteSchedules4Date(string dateStr);
+
         public IEnumerable<UpdateScheduleRequest> DeleteAllSchedules();
         public Boolean DeleteAllTimeSlots();
 
         public AccountResponse AddSchedule(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse UpdateSchedule(string id, UpdateScheduleRequest scheduleReq);
+        public IEnumerable<AccountResponse> GetSchedules4Date(string dateStr);
         public (AccountResponse, string) DeleteFunction(string id, AgentTask functionReq);
         public AccountResponse AddFunction(string id, AgentTask functionReq);
         //public SchedulePoolElementsResponse ChangeUserAvailability(int id, UpdateScheduleRequest scheduleReq);
@@ -923,6 +926,36 @@ namespace WebApi.Services
                 }
             }
         }
+        public void DeleteSchedules4Date(string dateStr)
+        {
+            log.InfoFormat("DeleteSchedules4Date before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var schedules = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).
+                        Select(account => account.Schedules).SelectMany(s => s.Where(s=> s.Date.Equals(dateStr))).ToArray();
+                    _context.Schedules.RemoveRange(schedules);
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteSchedules4Date:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    Console.WriteLine("DeleteSchedules4Date after locking");
+                }
+            }
+        }
         public IEnumerable<UpdateScheduleRequest> DeleteAllSchedules()
         {
             log.Info("DeleteAllSchedules before locking");
@@ -1084,6 +1117,35 @@ namespace WebApi.Services
                 }
             }
         }
+        public IEnumerable<AccountResponse> GetSchedules4Date(string dateStr)
+        {
+            log.Info("GetSchedules4Date before locking");
+            semaphoreObject.Wait();
+
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var accounts = _context.Accounts.Include(x => x.Schedules).Include(x => x.UserFunctions).
+                        Where(account => account.Schedules.Any(s => s.Date.Equals(dateStr))).ToArray();
+                    AccountResponse[] response = _mapper.Map<AccountResponse[]>(accounts);
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in GetSchedules4Date:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("GetSchedules4Date after locking");
+                }
+            }
+        }
+
         public (AccountResponse, string) DeleteFunction(string id, AgentTask task)
         {
             log.Info("DeleteFunction before locking");

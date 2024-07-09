@@ -285,6 +285,30 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpGet("get-schedule/{dateStr}")]
+        public ActionResult<IEnumerable<AccountResponse>> GetSchedules4Date(string dateStr)
+        {
+            // users can update their own account and admins can update any account
+            if (Account.Role != Role.Admin)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var account = _accountService.GetSchedules4Date(dateStr);
+            return Ok(account);
+        }
+
+        [Authorize]
+        [HttpDelete("delete-schedules_4_date/{dateStr}")]
+        public IActionResult DeleteSchedules4Date(string dateStr)
+        {
+            // users can update their own account and admins can update any account
+            if (Account.Role != Role.Admin)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            _accountService.DeleteSchedules4Date(dateStr);
+            return Ok();
+        }
+
+        [Authorize]
         [HttpPost("delete-schedule/{id}")]
         public ActionResult<AccountResponse> DeleteSchedule(string id, UpdateScheduleRequest schedule)
         {
