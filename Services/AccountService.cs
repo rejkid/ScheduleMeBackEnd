@@ -113,7 +113,7 @@ namespace WebApi.Services
 
         public List<AgentTaskConfig> GetAllAgentTaskConfigs();
 
-        public AgentTaskConfig UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq);
+        public AgentTaskConfig[] UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq);
 
         public void DeleteAgentTaskConfig(string id);
 
@@ -125,9 +125,9 @@ namespace WebApi.Services
 
         public Byte[] DownloadSchedules();
 
-        public List<TimeSlotTasks> GetTimeSlotsTasks();
+        public TimeSlotTasks[] GetTimeSlotsTasks();
 
-        public Boolean SetTimeSlotsTasks(TimeSlotTasks tasks);
+        public TimeSlotTasks[] SetTimeSlotsTasks(TimeSlotTasks tasks);
         public Boolean DeleteTimeSlotsTasks(TimeSlotTasks slotFromClient);
 
         public IEnumerable<AccountResponse> DeleteAllUserAccounts();
@@ -1638,7 +1638,7 @@ namespace WebApi.Services
                 }
             }
         }
-        public AgentTaskConfig UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
+        public AgentTaskConfig[] UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
         {
             log.Info("CreateAgentTaskConfig before locking");
             semaphoreObject.Wait();
@@ -1659,7 +1659,7 @@ namespace WebApi.Services
                     }
                     _context.SaveChanges();
                     transaction.Commit();
-                    return cfg;
+                    return _context.AgentTaskConfigs.ToArray();
                 }
                 catch (Exception ex)
                 {
@@ -1803,7 +1803,7 @@ namespace WebApi.Services
             }
         }
 
-        public List<TimeSlotTasks> GetTimeSlotsTasks()
+        public TimeSlotTasks[] GetTimeSlotsTasks()
         {
             log.Info("GetTimeSlotsTasks before locking");
             semaphoreObject.Wait();
@@ -1812,7 +1812,7 @@ namespace WebApi.Services
             {
                 try
                 {
-                    var response = _context.TimeSlotsTasks.ToList();
+                    var response = _context.TimeSlotsTasks.ToArray();
                     return response;
                 }
                 catch (Exception ex)
@@ -1830,7 +1830,7 @@ namespace WebApi.Services
             }
         }
 
-        public Boolean SetTimeSlotsTasks(TimeSlotTasks slotFromClient)
+        public TimeSlotTasks[] SetTimeSlotsTasks(TimeSlotTasks slotFromClient)
         {
             log.Info("SetTimeSlotsTasks before locking");
             semaphoreObject.Wait();
@@ -1850,7 +1850,7 @@ namespace WebApi.Services
                     }
                     _context.SaveChanges();
                     transaction.Commit();
-                    var response = true;// _context.TimeSlotsTasks.ToList();
+                    var response = _context.TimeSlotsTasks.ToArray();
                     return response;
                 }
                 catch (Exception ex)

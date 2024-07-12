@@ -444,7 +444,7 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPut("create-agent-task-config/{id}")]
-        public ActionResult<AgentTaskConfig> UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
+        public ActionResult<AgentTaskConfig[]> UpdateAgentTaskConfig(string id, UpdateAgentTaskConfigRequest agentTaskConfigReq)
         {
             try
             {
@@ -556,11 +556,10 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpGet("timeslots-tasks"), DisableRequestSizeLimit]
-        public ActionResult<List<TimeSlotTasks>> GetTimeSlotsTasks()
+        public ActionResult<TimeSlotTasks[]> GetTimeSlotsTasks()
         {
             try
             {
-
                 var retVal = _accountService.GetTimeSlotsTasks();
                 return Ok(retVal);
             }
@@ -572,11 +571,10 @@ namespace WebApi.Controllers
 
         [Authorize]
         [HttpPut("timeslots-tasks")]
-        public ActionResult<Boolean> SetTimeSlotsTasks(TimeSlotTasks tasks)
+        public ActionResult<TimeSlotTasks[]> SetTimeSlotsTasks(TimeSlotTasks tasks)
         {
             try
             {
-
                 var retVal = _accountService.SetTimeSlotsTasks(tasks);
                 return Ok(retVal);
             }
