@@ -291,6 +291,7 @@ namespace WebApi.Migrations
                 {
                     FunctionId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
+                    PreferredTime = table.Column<string>(type: "TEXT", nullable: true),
                     UserFunction = table.Column<string>(type: "TEXT", nullable: true),
                     Group = table.Column<string>(type: "TEXT", nullable: true),
                     IsGroup = table.Column<bool>(type: "INTEGER", nullable: false),

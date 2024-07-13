@@ -119,7 +119,7 @@ namespace WebApi.Services
 
         public void DeleteAllAgentTaskConfigs();
 
-        public void UploadAccounts(string path);
+        public void UploadUserAccounts(string path);
         Boolean GenerateSchedules();
         public void ImportTimeSlotsTasks(string xlsmfullPath);
 
@@ -1734,7 +1734,7 @@ namespace WebApi.Services
             }
         }
 
-        public void UploadAccounts(string path)
+        public void UploadUserAccounts(string path)
         {
             try
             {
@@ -2564,39 +2564,56 @@ namespace WebApi.Services
                             string[] tasks = tasksStr == string.Empty ? new string[0] : tasksStr.Split(' ');
                             tasks = tasks.Where(x => !string.IsNullOrEmpty(x)).ToArray();
                             if (tasks.Length <= 0)
-                                throw new AppException(String.Format("There must be at least one UserFunction defined at row {0}", row + 1));
+                                throw new AppException(String.Format("There must be at least one User Task defined at row {0}", row + 1));
 
                             if(groupStr.Length > 0)
                             {
                                 // We are defining user for a group task
-                                if (tasks.Length == 1 && !GetGroupTasksArray().Contains(tasks[0]))
+                                if (!GetGroupTasksArray().Contains(tasks[0]))
                                 {
                                     throw new AppException(String.Format("Group task '{1}' must be configured in 'GroupTasks' at row {0}", row + 1, tasks[0]));
-                                } else if (tasks.Length > 1)
-                                {
-                                    throw new AppException(String.Format("There must be only one task type defined for a group name {1} at row {0}", row + 1, groupStr));
                                 }
+                            } else if (!GetTasksArray().Contains(tasks[0]))
+                            {
+                                throw new AppException(String.Format("Group task '{1}' must be configured in 'Tasks' at row {0}", row + 1, tasks[0]));
                             }
                             /* There should be just one task (function e.g. "Cleaner") for group agent (account) 
                               
                                     Group: "A"
                                     UserFunction : Cleaner
+                                    PreferredTime : 8:30
 
                                     Group: ""
                                     UserFunction : Acolyte
+                                    PreferredTime : 8:30
 
                                     Group: ""
                                     UserFunction : Acolyte
+                                    PreferredTime : 10:00
                                     Group: ""
                                     UserFunction : Reader1
+                                    PreferredTime : 8:30
                                     Group: ""
                                     UserFunction : EMHC
+                                    PreferredTime : 10:00
                              */
-                            foreach (var functionStr in tasks)
+                            for (int index = 0;  index < tasks.Length; index++)
                             {
+                                TimeSpan intervalVal;
+                                var functionStr = tasks[index];
+                                if (index < (tasks.Length - 1) && IsValidTimeFormat(tasks[index + 1], out intervalVal))
+                                {
+                                    // We have preferred time specified
+                                    index++;
+                                }
+                                else
+                                {
+                                    intervalVal = new TimeSpan(0,0,0);
+                                }
                                 AgentTask f = new AgentTask
                                 {
                                     UserFunction = functionStr.Trim(),
+                                    PreferredTime = $"{intervalVal:hh\\:mm}",
                                     Group = groupStr, // Group string for group task, empty string for the rest
                                 };
                                 if (!GetTasksArray().Contains(f.UserFunction) && !GetGroupTasksArray().Contains(f.UserFunction))
@@ -2622,6 +2639,12 @@ namespace WebApi.Services
                         break;
                 }
             }
+        }
+
+        public bool IsValidTimeFormat(string input, out TimeSpan intervalVal)
+        {
+            //TimeSpan dummyOutput;
+            return TimeSpan.TryParse(input, out intervalVal);
         }
 
         /* Private helper functions */

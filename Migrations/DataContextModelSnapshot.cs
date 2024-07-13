@@ -269,6 +269,9 @@ namespace WebApi.Migrations
                     b.Property<bool>("IsGroup")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("PreferredTime")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("UserFunction")
                         .HasColumnType("TEXT");
 

@@ -11,7 +11,7 @@ using WebApi.Helpers;
 namespace WebApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20240618185501_InitialCreate")]
+    [Migration("20240712103712_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -271,6 +271,9 @@ namespace WebApi.Migrations
 
                     b.Property<bool>("IsGroup")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreferredTime")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("UserFunction")
                         .HasColumnType("TEXT");

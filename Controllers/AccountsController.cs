@@ -510,7 +510,7 @@ namespace WebApi.Controllers
                     {
                         file.CopyTo(stream);
                     }
-                    _accountService.UploadAccounts(fullPath);
+                    _accountService.UploadUserAccounts(fullPath);
                 }
                 return Ok();
             }
