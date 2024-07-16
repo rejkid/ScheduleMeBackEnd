@@ -2120,7 +2120,7 @@ namespace WebApi.Services
                                   .ToArray();
 
                 /* Sorted map - so the groups are in the order A/B/C etc*/
-                var map = new SortedDictionary<string, List<Account>>();
+                var map = new SortedDictionary<string, List<Account>>(); // Group -> List<Account>
 
                 /* Build tree of groupAgent belonging to specific group (e.g. A/B/C or D)
                  *  a
@@ -2142,19 +2142,19 @@ namespace WebApi.Services
                 {
                     /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
                     //var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
-                    var keys = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
-                    foreach (AgentTask key in keys) 
+                    var accountAgentTasks = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
+                    foreach (AgentTask agentTask in accountAgentTasks) 
                     {
-                        if (map.ContainsKey(key.Group))
+                        if (map.ContainsKey(agentTask.Group))
                         {
-                            var list = map.GetValueOrDefault(key.Group);
+                            var list = map.GetValueOrDefault(agentTask.Group);
                             list.Add(account);
                         }
                         else
                         {
                             var l = new List<Account>();
                             l.Add(account);
-                            map.Add(key.Group, l);
+                            map.Add(agentTask.Group, l);
                         }
                     }
                 }
@@ -2164,14 +2164,14 @@ namespace WebApi.Services
                     outputString.Append("g").Append(" ").Append(keyValuePair.Key).Append(" ").Append(tg);
                     /*
                      * "To obtain more efficient assignments list the more flexible agents in a group last" - 
-                     * by James Bremner
+                     * stated by James Bremner
                      */
                     keyValuePair.Value.Sort((Account a1, Account a2) => {
                         return a1.UserFunctions.Count.CompareTo(a2.UserFunctions.Count);
                     });
                     foreach (var a in keyValuePair.Value)
                     {
-                        // Add agent name (email + dob)
+                        // Add agent name (agent name = email + dob)
                         outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
                     }
                     outputString.Append("\n");
@@ -2398,7 +2398,8 @@ namespace WebApi.Services
             int rows = worksheet.Cells.MaxDataRow;
             int cols = worksheet.Cells.MaxDataColumn;
 
-            List <AgentTask> functions = new List<AgentTask>();
+            Dictionary<string, List<AgentTask>> user2Functions = new ();
+            List<AgentTask> functions = new List<AgentTask>();
             CreateRequest request = new CreateRequest();
 
             log.Info("PopulateUsers before locking");
@@ -2418,11 +2419,16 @@ namespace WebApi.Services
                         foreach (string gt in GetGroupTasksArray())
                         {
                             AgentTask func = functions.SingleOrDefault(fr => fr.UserFunction.Equals(gt));
-                            if (func != null && func.Group.Trim().Length == 0 )
+                            if (func != null)
                             {
-                                throw new AppException(String.Format("Group task {1} at row {0} has not defined Team Group", row + 1, func.UserFunction));
+                                if (func.Group.Trim().Length == 0)
+                                {
+                                    throw new AppException(String.Format("Group task {1} at row {0} has not defined Team Group", row + 1, func.UserFunction));
+                                }
                             }
                         }
+
+
                         // User and functions have been red in
                         request.Role = Role.User.ToString();
 
@@ -2447,15 +2453,22 @@ namespace WebApi.Services
 
                         // Initialize function - multiple function per row
                         account.UserFunctions.AddRange(functions);
-                        _context.Accounts.Update(account);
 
-                        var groups = _context.Accounts
-                                              .Include(x => x.UserFunctions).SelectMany(kvp => kvp.UserFunctions).Select(b => b.Group).
-                                              Distinct().ToList();
-                        if(groups.Count > 0)
+                        // Collect all agent tasks objects and keep them in the map per user(account == dob+email)
+                        if (user2Functions.ContainsKey(account.DOB + account.Email))
                         {
-                            Console.WriteLine(groups.Count);
-                        }  
+                            user2Functions.GetValueOrDefault(account.DOB + account.Email).AddRange(functions);
+                        }
+                        else
+                        {
+                            List<AgentTask> tasks = new List<AgentTask>();
+                            tasks.AddRange(functions);
+                            user2Functions.Add(account.DOB + account.Email, tasks);
+                        }
+                        CheckGroupAgentPreferredTimeConsistent(user2Functions, row);
+                        // End of collecting agent tasks
+
+                        _context.Accounts.Update(account);
                         functions.Clear();
                     }
                     _context.SaveChanges();
@@ -2477,8 +2490,62 @@ namespace WebApi.Services
             }
         }
 
-        private void CreateUser(Worksheet worksheet, int noOfCols, int row,
-            CreateRequest request, List<AgentTask> functions)
+        private void CheckGroupAgentPreferredTimeConsistent(Dictionary<string, List<AgentTask>> user2Functions, int row)
+        {
+            foreach (string gt in GetGroupTasksArray())
+            {
+                var uniqueTasks = user2Functions
+                .SelectMany(account => account.Value).Where(uf => uf.UserFunction.Equals(gt)).ToList()
+                    .Distinct(
+                    new CustomEqualityComparer<AgentTask>((agent1, agent2) =>
+                    {
+                        return agent1.Equals(agent2);
+                    }))
+                    .ToArray();
+
+                if (gt == "Cleaner" && uniqueTasks.Length == 4)
+                {
+                    Console.WriteLine(uniqueTasks.Length);
+                }
+                else if (gt == "Welcomer" && uniqueTasks.Length == 3)
+                {
+                    Console.WriteLine(uniqueTasks.Length);
+                }
+                else if (gt == "Choir" && uniqueTasks.Length == 2)
+                {
+                    Console.WriteLine(uniqueTasks.Length);
+                }
+                else if (gt == "Collector" && uniqueTasks.Length == 1)
+                {
+                    Console.WriteLine(uniqueTasks.Length);
+                }
+                for (int i = 0; i < uniqueTasks.Length; i++)
+                {
+                    /* Check that the group tasks are consistent, that is all agents within the 'group agent' have the same
+                    * preferred time.
+                    */
+
+                    var tasks = user2Functions
+                                .SelectMany(account => account.Value).Where(uf => uf.Equals(uniqueTasks[i])).ToArray();
+                    if (tasks.Length > 1) // if we have group agent with at least two members
+                    {
+                        for (int j = 0; j < tasks.Length; j++)
+                        {
+                            if (uniqueTasks[i].PreferredTime != tasks[j].PreferredTime)
+                            {
+                                throw new AppException(String.Format("Group Agent {0} at row {1} has inconsistent time: {2} (Prev:{3})",
+                                    tasks[j].Group,
+                                    row + 1,
+                                    tasks[j].PreferredTime,
+                                    uniqueTasks[i].PreferredTime));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void CreateUser(Worksheet worksheet, int noOfCols, int row, CreateRequest request, List<AgentTask> functions)
         {
             AgentTask function = new AgentTask();
             // Loop through each column in selected row
@@ -2490,7 +2557,7 @@ namespace WebApi.Services
                         {
                             request.Title = (string)worksheet.Cells[row, col].Value;
                             request.Title = (request.Title == null) ? string.Empty : request.Title.Trim();
-                            if(request.Title.Length <= 0)
+                            if (request.Title.Length <= 0)
                                 throw new AppException(String.Format("Title can't be empty at row {0}", row + 1));
                         }
                         break;
@@ -2551,7 +2618,7 @@ namespace WebApi.Services
                             request.ConfirmPassword = (string)worksheet.Cells[row, col].Value;
                             request.ConfirmPassword = (request.ConfirmPassword == null) ? string.Empty : request.ConfirmPassword.Trim();
 
-                            if(request.Password.Length == 0)
+                            if (request.Password.Length == 0)
                                 throw new AppException(String.Format("Password can't be empty at row {0}", row + 1));
                         }
                         break;
@@ -2560,20 +2627,21 @@ namespace WebApi.Services
                             var groupStr = worksheet.Cells[row, col + 1].Value == null ? String.Empty : ((string)worksheet.Cells[row, col + 1].Value).Trim();
                             // Add tasks to the user
                             var tasksStr = worksheet.Cells[row, col].Value == null ? String.Empty : ((string)worksheet.Cells[row, col].Value).Trim();
-                            
+
                             string[] tasks = tasksStr == string.Empty ? new string[0] : tasksStr.Split(' ');
                             tasks = tasks.Where(x => !string.IsNullOrEmpty(x)).ToArray();
                             if (tasks.Length <= 0)
                                 throw new AppException(String.Format("There must be at least one User Task defined at row {0}", row + 1));
 
-                            if(groupStr.Length > 0)
+                            if (groupStr.Length > 0)
                             {
                                 // We are defining user for a group task
                                 if (!GetGroupTasksArray().Contains(tasks[0]))
                                 {
                                     throw new AppException(String.Format("Group task '{1}' must be configured in 'GroupTasks' at row {0}", row + 1, tasks[0]));
                                 }
-                            } else if (!GetTasksArray().Contains(tasks[0]))
+                            }
+                            else if (!GetTasksArray().Contains(tasks[0]))
                             {
                                 throw new AppException(String.Format("Group task '{1}' must be configured in 'Tasks' at row {0}", row + 1, tasks[0]));
                             }
@@ -2597,7 +2665,7 @@ namespace WebApi.Services
                                     UserFunction : EMHC
                                     PreferredTime : 10:00
                              */
-                            for (int index = 0;  index < tasks.Length; index++)
+                            for (int index = 0; index < tasks.Length; index++)
                             {
                                 TimeSpan intervalVal;
                                 var functionStr = tasks[index];
@@ -2608,7 +2676,7 @@ namespace WebApi.Services
                                 }
                                 else
                                 {
-                                    intervalVal = new TimeSpan(0,0,0);
+                                    intervalVal = new TimeSpan(0, 0, 0);
                                 }
                                 AgentTask f = new AgentTask
                                 {
@@ -2641,6 +2709,30 @@ namespace WebApi.Services
             }
         }
 
+        public class CustomEqualityComparer<T> : IEqualityComparer<T>
+        {
+            private readonly Func<T, T, bool> Comparison;
+
+            public CustomEqualityComparer(Func<T, T, bool> comparison)
+            {
+                this.Comparison = comparison;
+            }
+
+            public bool Equals(T x, T y)
+            {
+                return Comparison(x, y);
+            }
+
+            public int GetHashCode(T obj)
+            {
+                return obj.GetHashCode();
+            }
+
+            public static IEqualityComparer<T> Create(Func<T, T, bool> comparison)
+            {
+                return new CustomEqualityComparer<T>(comparison);
+            }
+        }
         public bool IsValidTimeFormat(string input, out TimeSpan intervalVal)
         {
             //TimeSpan dummyOutput;
