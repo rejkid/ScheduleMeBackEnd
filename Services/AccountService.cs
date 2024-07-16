@@ -2503,22 +2503,6 @@ namespace WebApi.Services
                     }))
                     .ToArray();
 
-                if (gt == "Cleaner" && uniqueTasks.Length == 4)
-                {
-                    Console.WriteLine(uniqueTasks.Length);
-                }
-                else if (gt == "Welcomer" && uniqueTasks.Length == 3)
-                {
-                    Console.WriteLine(uniqueTasks.Length);
-                }
-                else if (gt == "Choir" && uniqueTasks.Length == 2)
-                {
-                    Console.WriteLine(uniqueTasks.Length);
-                }
-                else if (gt == "Collector" && uniqueTasks.Length == 1)
-                {
-                    Console.WriteLine(uniqueTasks.Length);
-                }
                 for (int i = 0; i < uniqueTasks.Length; i++)
                 {
                     /* Check that the group tasks are consistent, that is all agents within the 'group agent' have the same
