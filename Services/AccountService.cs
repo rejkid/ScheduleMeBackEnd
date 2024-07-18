@@ -100,7 +100,7 @@ namespace WebApi.Services
         public IEnumerable<AccountResponse> GetSchedules4Date(string dateStr);
         public (AccountResponse, string) DeleteFunction(string id, AgentTask functionReq);
         public AccountResponse AddFunction(string id, AgentTask functionReq);
-        //public SchedulePoolElementsResponse ChangeUserAvailability(int id, UpdateScheduleRequest scheduleReq);
+        public IEnumerable<Account> TestAddFunction(string id, AgentTask task);
         public AccountResponse GetScheduleFromPool(string id, UpdateScheduleRequest scheduleReq);
         public AccountResponse MoveSchedule2Pool(string id, UpdateScheduleRequest scheduleReq);
 
@@ -1211,10 +1211,43 @@ namespace WebApi.Services
                 try
                 {
                     var account = getAccount(id);
-                    var newFunction = new AgentTask();
-                    newFunction = _mapper.Map<AgentTask>(task);
-                    account.UserFunctions.Add(newFunction);
-                    _context.Accounts.Update(account);
+                    AgentTask t = account.UserFunctions.Find((t) => t.Equals(task));
+                    if(t == null)
+                    {
+                        var newTask = new AgentTask();
+                        newTask = _mapper.Map<AgentTask>(task);
+                        account.UserFunctions.Add(newTask);
+                        _context.Accounts.Update(account);
+                    }
+                    else
+                    {
+                        t.PreferredTime = task.PreferredTime;
+                        _context.Accounts.Update(account);
+                    }
+
+                    if (task.IsGroup)
+                    {
+                        // 1. Find all agents that have the 'task' assigned to them
+                        // 2. For each agent find the task belonging to the same group agent (task.Group value && task.UserFunction)
+                        // 3. Update found agent tasks preferred time to the 'task' preferred time passed as
+                        // a parameter to this method
+                        var accounts = (_context.Accounts.Include(x => x.UserFunctions))
+                        .Where(a => a.UserFunctions.Any(t => t.UserFunction.Equals(task.UserFunction) && t.Group.Equals(task.Group))).ToArray();
+
+                        for (int i = 0; i < accounts.Length; i++)
+                        {
+                            if (account.Id != accounts[i].Id) // Skip just updated account
+                            {
+                                var tasks = accounts[i].UserFunctions.Where(uf => uf.Equals(task)).ToArray();
+                                for (int j = 0; j < tasks.Length; j++)
+                                {
+                                    tasks[j].PreferredTime = task.PreferredTime;
+                                }
+                                _context.Accounts.Update(accounts[i]);
+                            }
+                        }
+                    }
+
                     _context.SaveChanges();
                     transaction.Commit();
 
@@ -1231,6 +1264,46 @@ namespace WebApi.Services
                 {
                     semaphoreObject.Release();
                     log.Info("AddFunction after locking");
+                }
+            }
+        }
+
+        public IEnumerable<Account> TestAddFunction(string id, AgentTask task)
+        {
+            log.Info("TestAddFunction before locking");
+            semaphoreObject.Wait();
+            using (IDbContextTransaction transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    Account[] accounts = null;
+
+                    if (task.IsGroup)
+                    {
+                        // 1. Find all agents that have the 'task' assigned to them
+                        // 2. For each agent find the task belonging to the same group agent (task.Group value && task.UserFunction)
+                        // 3. Update found agent tasks preferred time to the 'task' preferred time passed as
+                        // a parameter to this method
+                        accounts = (_context.Accounts.Include(x => x.UserFunctions))
+                        .Where(a => a.UserFunctions.Any(t => t.UserFunction.Equals(task.UserFunction) && t.Group.Equals(task.Group))).ToArray();
+                    }
+
+                    _context.SaveChanges();
+                    transaction.Commit();
+
+                    return accounts;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
+                    log.Error(Thread.CurrentThread.Name + "Error occurred in TestAddFunction:", ex);
+                    throw;
+                }
+                finally
+                {
+                    semaphoreObject.Release();
+                    log.Info("TestAddFunction after locking");
                 }
             }
         }

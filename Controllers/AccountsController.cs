@@ -347,6 +347,18 @@ namespace WebApi.Controllers
         }
 
         [Authorize]
+        [HttpPut("test-add-function/{id}")]
+        public ActionResult<Account[]> TestAddFunction(string id, AgentTask function)
+        {
+            // users can update their own account and admins can update any account
+            if (id != Account.Id && Account.Role != Role.Admin)
+                return Unauthorized(new { message = "Unauthorized" });
+
+            var account = _accountService.TestAddFunction(id, function);
+            return Ok(account);
+        }
+
+        [Authorize]
         [HttpPost("delete-function/{id}")]
         public ActionResult<AccountResponse> DeleteFunction(string id, AgentTask function)
         {
