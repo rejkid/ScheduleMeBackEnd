@@ -18,13 +18,13 @@ namespace WebApi.Entities
 
         public int CompareTo(AgentTask other)
         {
-            if (UserFunction.CompareTo(other) != 0)
+            if (UserFunction.CompareTo(other.UserFunction) != 0)
             {
-                return UserFunction.CompareTo(other);
+                return UserFunction.CompareTo(other.UserFunction);
             }
             else
             { 
-                return Group.CompareTo(other); 
+                return Group.CompareTo(other.Group); 
             } 
         }
 

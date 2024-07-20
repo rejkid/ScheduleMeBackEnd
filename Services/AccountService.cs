@@ -2139,6 +2139,8 @@ namespace WebApi.Services
                             if (!arr.Contains(account.UserFunctions[i].UserFunction))
                             {
                                 taskString.Append(" ").Append(account.UserFunctions[i].UserFunction);
+                                //TimeSpan ts = TimeSpan.ParseExact(account.UserFunctions[i].PreferredTime, @"hh\:mm", CultureInfo.InvariantCulture);
+                                //taskString.Append(" ").Append($"{ts:hhmm}");
                             }
                             arr.Add(account.UserFunctions[i].UserFunction);
                         }
@@ -2183,17 +2185,17 @@ namespace WebApi.Services
 
         private void WriteGroupAgentRecords(StringBuilder outputString)
         {
-            foreach(string tg in GetGroupTasksArray())
+            foreach(string gt in GetGroupTasksArray())
             {
                 /* groupTaskAccount e.g. "Cleaner" */
                 var groupTaskAccounts = _context.Accounts
                                   .Include(x => x.UserFunctions)
                                   .Where(account => account.UserFunctions
-                                                           .Any(uf => uf.UserFunction.Equals(tg)))
+                                                           .Any(uf => uf.UserFunction.Equals(gt)))
                                   .ToArray();
 
                 /* Sorted map - so the groups are in the order A/B/C etc*/
-                var map = new SortedDictionary<string, List<Account>>(); // Group -> List<Account>
+                var map = new SortedDictionary<AgentTask, List<Account>>(); // Group -> List<Account>
 
                 /* Build tree of groupAgent belonging to specific group (e.g. A/B/C or D)
                  *  a
@@ -2215,26 +2217,26 @@ namespace WebApi.Services
                 {
                     /* Retrieve Group name (as a key) belonging to group task (A/B/C ect) */
                     //var key = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).FirstOrDefault().Group;
-                    var accountAgentTasks = account.UserFunctions.Where(uf => uf.UserFunction.Equals(tg)).ToList();
+                    var accountAgentTasks = account.UserFunctions.Where(uf => uf.UserFunction.Equals(gt)).ToList();
                     foreach (AgentTask agentTask in accountAgentTasks) 
                     {
-                        if (map.ContainsKey(agentTask.Group))
+                        if (map.ContainsKey(agentTask))
                         {
-                            var list = map.GetValueOrDefault(agentTask.Group);
+                            var list = map.GetValueOrDefault(agentTask);
                             list.Add(account);
                         }
                         else
                         {
                             var l = new List<Account>();
                             l.Add(account);
-                            map.Add(agentTask.Group, l);
+                            map.Add(agentTask, l);
                         }
                     }
                 }
                 /*  Write Group Agent - see "Group Agent Specification" */
                 foreach (var keyValuePair in map)
                 {
-                    outputString.Append("g").Append(" ").Append(keyValuePair.Key).Append(" ").Append(tg);
+                    outputString.Append("g").Append(" ").Append(keyValuePair.Key.Group).Append(" ").Append(gt);
                     /*
                      * "To obtain more efficient assignments list the more flexible agents in a group last" - 
                      * stated by James Bremner
@@ -2247,6 +2249,8 @@ namespace WebApi.Services
                         // Add agent name (agent name = email + dob)
                         outputString.Append(" ").Append(a.Email).Append(SEPARATOR).Append(a.DOB).Append(" ");
                     }
+                    //TimeSpan ts = TimeSpan.ParseExact(keyValuePair.Key.PreferredTime, @"hh\:mm", CultureInfo.InvariantCulture);
+                    //outputString.Append($"{ts:hhmm}");
                     outputString.Append("\n");
                 }
             }
