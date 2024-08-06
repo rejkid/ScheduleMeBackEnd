@@ -66,6 +66,7 @@ using static iText.Svg.SvgConstants;
 using System.Diagnostics.Metrics;
 using Aspose.Pdf.Structure;
 using iText.Commons.Actions.Contexts;
+using System.Runtime.ExceptionServices;
 
 namespace WebApi.Services
 {
@@ -235,7 +236,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Authenticate:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -293,7 +294,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in RefreshToken:");
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -326,7 +327,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in RevokeToken:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -421,7 +422,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Register:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -468,7 +469,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Create:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -514,7 +515,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Update:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -549,7 +550,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name);
                     log.Error(Thread.CurrentThread.Name + "Error occurred in VerifyEmail:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -593,7 +594,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in ForgotPassword:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -618,7 +619,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in ValidateResetToken:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -659,7 +660,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in ResetPassword:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -683,7 +684,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in GetAll:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -711,7 +712,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in GetAccountsForDate:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -732,7 +733,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in GetAllDates:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -786,7 +787,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in GetTeamsByFunctionForDate:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -861,7 +862,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in GetById:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -917,7 +918,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteSchedule:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -947,7 +948,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteSchedules4Date:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -979,7 +980,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllSchedules:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1010,7 +1011,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllTimeSlots:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1058,7 +1059,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in AddSchedule:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1108,7 +1109,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in UpdateSchedule:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1136,7 +1137,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in GetSchedules4Date:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1192,7 +1193,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteFunction:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1258,7 +1259,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in AddFunction:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1298,7 +1299,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in TestAddFunction:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1368,7 +1369,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in MoveSchedule2Pool:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1430,7 +1431,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in GetScheduleFromPool:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1673,7 +1674,7 @@ namespace WebApi.Services
                             transaction.Rollback();
                             Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                             log.Error(Thread.CurrentThread.Name + "Error occurred in DownloadSchedules:", ex);
-                            throw;
+                            ExceptionDispatchInfo.Throw(ex);
                         }
                         finally
                         {
@@ -1702,7 +1703,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in GetAllAgentTaskConfigs:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1739,7 +1740,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in CreateAgentTaskConfig:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1768,7 +1769,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.", ex);
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAgentTaskConfig:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1797,7 +1798,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteAllAgentTaskConfigs:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1825,7 +1826,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -1867,7 +1868,7 @@ namespace WebApi.Services
             {
                 Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                 log.Error(Thread.CurrentThread.Name + "Error occurred in UploadAccounts:", ex);
-                throw;
+                ExceptionDispatchInfo.Throw(ex);
             }
             finally
             {
@@ -1893,7 +1894,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in GetTimeSlotsTasks:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1931,7 +1932,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in SetTimeSlotsTasks:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -1963,7 +1964,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in DeleteTimeSlotsTasks:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -2055,7 +2056,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in WriteTimeSlots2TasksInputFile:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 //finally
                 //{
@@ -2280,7 +2281,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in WriteTimeSlots2Tasks2InputFile:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
             }
         }
@@ -2417,7 +2418,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in CreateSchedulesFromOutput:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -2450,7 +2451,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Delete:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -2557,7 +2558,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in Create:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
@@ -2876,7 +2877,7 @@ namespace WebApi.Services
                     transaction.Rollback();
                     Console.WriteLine(Thread.CurrentThread.Name + "Error occurred.");
                     log.Error(Thread.CurrentThread.Name + "Error occurred in SetAutoEmail:", ex);
-                    throw;
+                    ExceptionDispatchInfo.Throw(ex);
                 }
                 finally
                 {
